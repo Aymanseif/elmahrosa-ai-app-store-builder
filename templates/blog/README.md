@@ -1,0 +1,1 @@
+# Blog/News App Template\n\nThis template provides a starting point for blog/news apps with features like:\n- Article listing\n- Article details\n- Category filtering\n- Search functionality\n- Author profile\n- Comment system (optional)\n\nIt uses Kotlin and Jetpack Compose following Material Design 3 guidelines.

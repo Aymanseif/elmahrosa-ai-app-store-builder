@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+##############################################################################
+##
+##  Gradle start up script for UN*X
+##
+##############################################################################
+
+# Attempt to set APP_HOME
+# Resolve links: $0 may be a link
+PRG="$0"
+while [ -h "$PRG" ] ; do
+    ls=$(ls -ld "$PRG")
+    link=$(expr "$ls" : '.*-> \(.*\)$')
+    if expr "$link" : '/.*' > /dev/null; then
+        PRG="$link"
+    else
+        PRG=$(dirname "$PRG")"/$link"
+    fi
+done
+SAVED="$(pwd)"
+cd "$(dirname "$PRG")/" >&-
+APP_HOME="$(pwd -P)"
+cd "$SAVED" >&-
+
+EXEC="@\"$APP_HOME/gradle/wrapper/gradle-wrapper.jar\""
+#noinspection BashEqualExpressions
+if [ "x$*" = "x" ] ; then
+    # noinspection BashEqualExpressions
+    if [ "x$MAX_FD" = "x" ] ; then
+        MAX_FD="maximum"
+    fi
+    #noinspection BashEqualExpressions
+    if [ "x$MAX_FD" = "xmaximum" ] ; then
+        #echo "Setting max file descriptor to maximum"
+        ulimit -H -n > /dev/null 2>&1
+    fi
+    #noinspection BashEqualExpressions
+    if [ "x$CYGWIN" = "x" ] ; then
+        # We don't need to check if gradle is configured; we only want the pid of the parent shell
+        # shell -c "exec \"$JAVA_EXE\" $DEFAULT_JVM_OPTS $JAVA_OPTS -classpath \"\"org.gradle.wrapper.GradleWrapperMain\" \"$@\""
+        #noinspection BashEqualExpressions
+        exec "$JAVA_EXE" $DEFAULT_JVM_OPTS $JAVA_OPTS -classpath "\"$EXEC\"" org.gradle.wrapper.GradleWrapperMain "$@"
+    else
+        #echo "Setting max file descriptor to maximum"
+        ulimit -H -n > /dev/null 2>&1
+    fi
+    #noinspection BashEqualExpressions
+    exec "$JAVA_EXE" $DEFAULT_JVM_OPTS $JAVA_OPTS -classpath "\"$EXEC\"" org.gradle.wrapper.GradleWrapperMain "$@"
+fi

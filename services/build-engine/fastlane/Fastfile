@@ -1,0 +1,39 @@
+default_platform(:android)
+
+platform :android do
+  desc "Build the Android app (debug)"
+  lane :build_debug do
+    gradle(task: "assembleDebug")
+  end
+
+  desc "Build the Android app (release)"
+  lane :build_release do
+    gradle(task: "assembleRelease")
+  end
+
+  desc "Build and sign the Android app (release)"
+  lane :sign_release do
+    gradle(task: "assembleRelease")
+  end
+
+  desc "Export the built AAB/APK"
+  lane :export do
+    # This lane would typically copy the built artifacts to a specific location
+    # For now, we'll just output where they can be found
+    sh("echo \"Built artifacts can be found in:\"")
+    sh("echo \"AAB: app/build/outputs/bundle/release/app-release.aab\"")
+    sh("echo \"APK: app/build/outputs/apk/release/app-release.apk\"")
+  end
+
+  desc "Full build pipeline: build, sign, and export"
+  lane :ci do
+    build_release
+    sign_release
+    export
+  end
+
+  desc "Clean the project"
+  lane :clean do
+    gradle(task: "clean")
+  end
+end

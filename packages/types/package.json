@@ -1,0 +1,1 @@
+{"name": "@elmahrosa/types", "version": "0.1.0", "description": "TypeScript types for Elmahrosa", "main": "dist/index.js", "types": "dist/index.d.ts", "license": "MIT", "scripts": {"build": "tsc"}, "devDependencies": {"typescript": "^4.0.0"}}

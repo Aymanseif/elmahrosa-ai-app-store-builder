@@ -1,0 +1,32 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "npm"
+    reviewers:
+      - "elmahrosa-maintainers"
+  - package-ecosystem: "pip"
+    directory: "/services/ai-generator"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+    reviewers:
+      - "elmahrosa-maintainers"
+  - package-ecosystem: "gradle"
+    directory: "/services/build-engine"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "gradle"
+    reviewers:
+      - "elmahrosa-maintainers"

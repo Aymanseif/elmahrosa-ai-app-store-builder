@@ -1,0 +1,1 @@
+{\n  "compilerOptions": {\n    "target": "es5",\n    "module": "commonjs",\n    "declaration": true,\n    "outDir": "./dist",\n    "strict": true,\n    "esModuleInterop": true\n  }\n}

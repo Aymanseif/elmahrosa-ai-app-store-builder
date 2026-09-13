@@ -1,0 +1,50 @@
+name: Question
+description: Ask a question about the project
+title: "[QUESTION] <description>"
+labels: ["question"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out with your question!
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Please ask your question here
+      placeholder: "What would you like to know?"
+      render: markdown
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the system is your question about?
+      options:
+        - Web App (Next.js)
+        - API Core (Node.js/Express)
+        - AI Generator (Python/FastAPI)
+        - Build Engine (Gradle/Fastlane)
+        - Documentation
+        - Getting Started
+        - Other
+      multiple: false
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Please provide any relevant context for your question
+      placeholder: "What were you trying to accomplish when you had this question?"
+      render: markdown
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context here
+      render: markdown

@@ -1,0 +1,1 @@
+packages:\n  - "apps/*"\n  - "services/*"\n  - "packages/*"

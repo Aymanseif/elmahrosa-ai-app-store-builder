@@ -1,0 +1,1 @@
+# SaaS Dashboard Template\n\nThis template provides a starting point for SaaS dashboard apps with features like:\n- Authentication/login\n- Dashboard overview\n- Analytics charts\n- Settings management\n- User profile\n- Team collaboration (optional)\n\nIt uses Kotlin and Jetpack Compose following Material Design 3 guidelines.

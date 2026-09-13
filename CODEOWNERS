@@ -1,0 +1,32 @@
+# These are the owners for specific parts of the repo.
+# @elmahrosa-maintainers has overall ownership
+
+# Web App
+/apps/web-app/ @elmahrosa-web-team
+
+# Sharing Hub  
+/apps/sharing-hub/ @elmahrosa-web-team
+
+# API Core
+/services/api-core/ @elmahrosa-backend-team
+
+# AI Generator
+/services/ai-generator/ @elmahrosa-ai-team
+
+# Build Engine
+/services/build-engine/ @elmahrosa-devops-team
+
+# Shared Packages
+/packages/ @elmahrosa-platform-team
+
+# Infrastructure
+/infra/ @elmahrosa-infra-team
+
+# Documentation
+/docs/ @elmahrosa-docs-team
+
+# Templates
+/templates/ @elmahrosa-design-team
+
+# General ownership
+* @elmahrosa-maintainers

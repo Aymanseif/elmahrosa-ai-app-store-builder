@@ -1,0 +1,1 @@
+# Utility App Template\n\nThis template provides a starting point for utility apps with features like:\n- Dashboard\n- Settings\n- Simple data storage\n\nIt uses Kotlin and Jetpack Compose following Material Design 3 guidelines.
