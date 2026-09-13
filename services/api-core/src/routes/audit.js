@@ -2,21 +2,16 @@ const express = require("express");
 const router = express.Router();
 const auditController = require("../controllers/auditController");
 const { authenticateToken } = require("../middleware/authMiddleware");
+const { auditCreateSchema, formatZodError } = require("../lib/validation");
 
-// Protect the audit routes
+// Protect all routes in this router
 router.use(authenticateToken);
 
 // Create a new audit for a project
 router.post("/", (req, res, next) => {
-  const { projectId, score, report } = req.body || {};
-  if (typeof projectId !== "string" || projectId.trim().length === 0) {
-    return res.status(400).json({ error: "projectId is required" });
-  }
-  if (!Number.isInteger(score) || score < 0 || score > 100) {
-    return res.status(400).json({ error: "score must be an integer between 0 and 100" });
-  }
-  if (typeof report !== "object" || report === null || Array.isArray(report)) {
-    return res.status(400).json({ error: "report must be a JSON object" });
+  const parsed = auditCreateSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    return res.status(400).json(formatZodError(parsed.error));
   }
   next();
 }, auditController.createAudit);

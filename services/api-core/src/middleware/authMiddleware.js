@@ -59,7 +59,15 @@ function verifyJwt(req) {
       return reject(new jwt.JsonWebTokenError('Access token required'));
     }
 
-    jwt.verify(token, getKey, { issuer: process.env.CLERK_ISSUER_URL }, (err, decoded) => {
+    const options = { issuer: process.env.CLERK_ISSUER_URL };
+    // Milestone 1.2: verify the `aud` claim when CLERK_AUDIENCE is
+    // configured. Clerk tokens carry the audience of the issuing instance;
+    // setting this env var pins verification to it.
+    if (process.env.CLERK_AUDIENCE) {
+      options.audience = process.env.CLERK_AUDIENCE;
+    }
+
+    jwt.verify(token, getKey, options, (err, decoded) => {
       if (err) return reject(err);
       resolve(decoded);
     });

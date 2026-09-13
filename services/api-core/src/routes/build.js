@@ -2,15 +2,16 @@ const express = require("express");
 const router = express.Router();
 const buildController = require("../controllers/buildController");
 const { authenticateToken } = require("../middleware/authMiddleware");
+const { projectIdSchema, buildUpdateSchema, formatZodError } = require("../lib/validation");
 
 // Protect the build routes
 router.use(authenticateToken);
 
 // Create a new build for a project
 router.post("/", (req, res, next) => {
-  const { projectId } = req.body || {};
-  if (typeof projectId !== "string" || projectId.trim().length === 0) {
-    return res.status(400).json({ error: "projectId is required" });
+  const parsed = projectIdSchema.safeParse((req.body || {}).projectId);
+  if (!parsed.success) {
+    return res.status(400).json(formatZodError(parsed.error));
   }
   next();
 }, buildController.createBuild);
@@ -22,6 +23,12 @@ router.get("/project/:projectId", buildController.getBuilds);
 router.get("/:id", buildController.getBuildById);
 
 // Update a build (e.g., update status and artifactUrl)
-router.patch("/:id", buildController.updateBuild);
+router.patch("/:id", (req, res, next) => {
+  const parsed = buildUpdateSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    return res.status(400).json(formatZodError(parsed.error));
+  }
+  next();
+}, buildController.updateBuild);
 
 module.exports = router;

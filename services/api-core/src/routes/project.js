@@ -2,16 +2,27 @@ const express = require("express");
 const router = express.Router();
 const prisma = require("../prisma/client");
 const { authenticateToken } = require("../middleware/authMiddleware");
+const { projectCreateSchema, paginationSchema, formatZodError } = require("../lib/validation");
 
 // Protect all routes in this router
 router.use(authenticateToken);
 
-// Get all projects for the authenticated user
+// Get all projects for the authenticated user (with validated pagination)
 router.get("/user/:userId", async (req, res) => {
   try {
     // Ignore the userId in the URL and use the authenticated user's id
     const userId = req.dbUser.id;
-    const projects = await prisma.project.findMany({ where: { userId } });
+    const parsed = paginationSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json(formatZodError(parsed.error));
+    }
+    const { limit, offset } = parsed.data;
+    const projects = await prisma.project.findMany({
+      where: { userId },
+      take: limit,
+      skip: offset,
+      orderBy: { updatedAt: "desc" },
+    });
     res.json(projects);
   } catch (error) {
     console.error(error);
@@ -22,16 +33,12 @@ router.get("/user/:userId", async (req, res) => {
 // Create a new project for the authenticated user
 router.post("/", async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const parsed = projectCreateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json(formatZodError(parsed.error));
+    }
+    const { name, description } = parsed.data;
     const userId = req.dbUser.id;
-
-    // Input validation
-    if (typeof name !== "string" || name.trim().length === 0 || name.length > 100) {
-      return res.status(400).json({ error: "name is required (1-100 characters)" });
-    }
-    if (description !== undefined && (typeof description !== "string" || description.length > 500)) {
-      return res.status(400).json({ error: "description must be a string of at most 500 characters" });
-    }
 
     // Get the user's subscription to determine the plan.
     // FIX: SubscriptionStatus is stored uppercase in the DB (see schema.prisma

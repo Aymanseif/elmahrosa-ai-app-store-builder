@@ -11,6 +11,21 @@ const stripeWebhookRouter = require("./routes/stripeWebhook");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Fail fast at boot when required configuration is missing. FIX (finding H-7,
+// milestone 1.2): previously the API booted without CLERK_ISSUER_URL or
+// DATABASE_URL and only failed with per-request 500s, making a
+// misconfiguration look like a runtime outage. STRIPE_SECRET_KEY is
+// intentionally optional (Stripe functionality degrades gracefully via lazy
+// init in src/lib/stripe.js).
+const REQUIRED_ENV = ["CLERK_ISSUER_URL", "DATABASE_URL"];
+const missing = REQUIRED_ENV.filter((name) => !process.env[name]);
+if (missing.length > 0) {
+  throw new Error(
+    `Missing required environment variables: ${missing.join(", ")}. ` +
+      "The API cannot start without them."
+  );
+}
+
 app.use(helmet());
 
 // Simple CORS: no cross-origin requests unless ALLOWED_ORIGIN is set.

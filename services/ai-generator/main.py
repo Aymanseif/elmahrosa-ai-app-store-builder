@@ -1,10 +1,27 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel
+import os
 import uuid
+
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from claude import generate_app_structure
 
 app = FastAPI()
+
+# Milestone 1.3: rate limiting on the generation endpoint. In-memory limiter
+# keyed by client IP; a shared Redis backend can replace it in production.
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
+
+
+def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 class GenerateAppRequest(BaseModel):
@@ -149,16 +166,35 @@ def _mock_structure(package_name):
     return structure
 
 
+def require_service_token(x_service_token: str = Header(None)):
+    """Milestone 1.3: shared service-token auth for service-to-service calls.
+
+    The token is validated against the SERVICE_TOKEN env var. When the env
+    var is not configured the endpoint stays locked (401) until provisioned.
+    """
+    expected = os.environ.get("SERVICE_TOKEN")
+    if not expected or not x_service_token or x_service_token != expected:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing X-Service-Token",
+        )
+
+
 @app.post("/generate", response_model=GenerateAppResponse)
-async def generate_app(request: GenerateAppRequest):
+@limiter.limit("20/minute")
+async def generate_app(
+    request: Request,
+    request_data: GenerateAppRequest,
+    _token: None = Depends(require_service_token),
+):
     project_id = str(uuid.uuid4())
 
     # Try real Claude generation first; fall back to the template mock when
     # ANTHROPIC_API_KEY is not configured or generation fails.
-    structure = generate_app_structure(request.prompt, request.packageName)
+    structure = generate_app_structure(request_data.prompt, request_data.packageName)
     generated_by = "Claude" if structure else "template"
     if structure is None:
-        structure = _mock_structure(request.packageName)
+        structure = _mock_structure(request_data.packageName)
 
     return GenerateAppResponse(
         projectId=project_id,

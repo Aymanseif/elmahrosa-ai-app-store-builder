@@ -1,5 +1,6 @@
 const prisma = require("../prisma/client");
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const { getStripe } = require("../lib/stripe");
+const { stripePriceSchema, formatZodError } = require("../lib/validation");
 
 // Prisma eats uppercase enum values; map Stripe/lowercase spellings in.
 const PLAN_MAP = {
@@ -23,8 +24,9 @@ const createSubscription = async (req, res) => {
     const { priceId, plan = "pro" } = req.body; // Expecting a Stripe price ID
 
     // Input validation
-    if (typeof priceId !== "string" || !/^price_[A-Za-z0-9]+$/.test(priceId)) {
-      return res.status(400).json({ error: "priceId is required and must be a Stripe price ID" });
+    const parsedPrice = stripePriceSchema.safeParse(priceId);
+    if (!parsedPrice.success) {
+      return res.status(400).json(formatZodError(parsedPrice.error));
     }
 
     const planEnum = PLAN_MAP[String(plan).toLowerCase()];
@@ -35,7 +37,7 @@ const createSubscription = async (req, res) => {
     // Get or create a Stripe customer for the user
     let customerId = req.dbUser.stripeCustomerId;
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await getStripe().customers.create({
         email: req.dbUser.email,
         metadata: {
           userId: req.dbUser.id,
@@ -59,7 +61,7 @@ const createSubscription = async (req, res) => {
     }
 
     // Create the subscription in Stripe
-    const stripeSubscription = await stripe.subscriptions.create({
+    const stripeSubscription = await getStripe().subscriptions.create({
       customer: customerId,
       items: [{ price: priceId }],
       expand: ["latest_invoice.payment_intent"],
