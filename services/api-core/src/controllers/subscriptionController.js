@@ -1,11 +1,31 @@
 const prisma = require("../prisma/client");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
+// Prisma eats uppercase enum values; map Stripe/lowercase spellings in.
+const PLAN_MAP = {
+  free: "FREE",
+  pro: "PRO",
+  enterprise: "ENTERPRISE",
+};
+
+const STATUS_MAP = {
+  active: "ACTIVE",
+  canceled: "CANCELED",
+  past_due: "PAST_DUE",
+  trialing: "TRIALING",
+  unpaid: "UNPAID",
+};
+
 // Create a subscription for the user
 const createSubscription = async (req, res) => {
   try {
     const userId = req.dbUser.id;
-    const { priceId } = req.body; // Expecting a Stripe price ID
+    const { priceId, plan = "pro" } = req.body; // Expecting a Stripe price ID
+
+    const planEnum = PLAN_MAP[String(plan).toLowerCase()];
+    if (!planEnum) {
+      return res.status(400).json({ error: "Invalid plan" });
+    }
 
     // Get or create a Stripe customer for the user
     let customerId = req.dbUser.stripeCustomerId;
@@ -26,7 +46,7 @@ const createSubscription = async (req, res) => {
 
     // Check if the user already has an active subscription
     const existingSubscription = await prisma.subscription.findFirst({
-      where: { userId, status: "active" },
+      where: { userId, status: "ACTIVE" },
     });
 
     if (existingSubscription) {
@@ -45,8 +65,8 @@ const createSubscription = async (req, res) => {
       data: {
         userId,
         stripeId: stripeSubscription.id,
-        plan: priceId, // We're storing the price ID as the plan for simplicity
-        status: stripeSubscription.status,
+        plan: planEnum,
+        status: STATUS_MAP[stripeSubscription.status] || "ACTIVE",
         currentPeriodEnd: stripeSubscription.current_period_end
           ? new Date(stripeSubscription.current_period_end * 1000)
           : null,
@@ -79,30 +99,63 @@ const getSubscription = async (req, res) => {
   }
 };
 
-// Update subscription (e.g., from webhook or user request)
+// Update subscription (user-initiated; e.g. cancel or change status)
 const updateSubscription = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, currentPeriodEnd } = req.body;
 
-    const subscription = await prisma.subscription.update({
+    const subscription = await prisma.subscription.findUnique({ where: { id } });
+
+    if (!subscription) {
+      return res.status(404).json({ error: "Subscription not found" });
+    }
+
+    // Ensure the subscription belongs to the authenticated user
+    if (subscription.userId !== req.dbUser.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const updated = await prisma.subscription.update({
       where: { id },
       data: {
-        status,
+        status: STATUS_MAP[String(status).toLowerCase()] || subscription.status,
         currentPeriodEnd: currentPeriodEnd
           ? new Date(currentPeriodEnd)
-          : null,
+          : subscription.currentPeriodEnd,
       },
     });
 
-    res.json(subscription);
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+};
+
+// Apply a Stripe webhook event to our subscription record by Stripe subscription id
+const applyWebhookEvent = async (stripeId, status, currentPeriodEnd) => {
+  if (!stripeId) return;
+
+  const subscription = await prisma.subscription.findUnique({
+    where: { stripeId },
+  });
+
+  if (!subscription) return;
+
+  await prisma.subscription.update({
+    where: { id: subscription.id },
+    data: {
+      status: STATUS_MAP[String(status).toLowerCase()] || subscription.status,
+      currentPeriodEnd: currentPeriodEnd
+        ? new Date(currentPeriodEnd)
+        : subscription.currentPeriodEnd,
+    },
+  });
 };
 
 module.exports = {
   createSubscription,
   getSubscription,
   updateSubscription,
+  applyWebhookEvent,
 };

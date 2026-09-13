@@ -1,11 +1,15 @@
 # Dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.js
 yarn.lock
 package-lock.json
 yarn-error.log
 .pnpm-debug.log
+
+# Next.js build output
+.next/
+out/
 
 # Python
 __pycache__/
@@ -21,8 +25,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/

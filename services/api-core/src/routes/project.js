@@ -31,7 +31,11 @@ router.post("/", async (req, res) => {
     });
 
     // Determine the plan; default to free if no active subscription
-    const plan = subscription ? subscription.plan : "free";
+    // (DB stores the plan as an uppercase enum, e.g. "PRO")
+    const plan = (subscription ? subscription.plan : "free").toLowerCase();
+    if (!["free", "pro", "enterprise"].includes(plan)) {
+      return res.status(403).json({ error: "Unknown subscription plan" });
+    }
 
     // Define project limits per plan
     const limits = {
@@ -87,15 +91,23 @@ router.get("/:id", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { name, description, status } = req.body;
+    const existing = await prisma.project.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Ensure the project belongs to the authenticated user
+    if (existing.userId !== req.dbUser.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     const project = await prisma.project.update({
       where: { id: req.params.id },
       data: { name, description, status },
     });
-
-    // Ensure the project belongs to the authenticated user
-    if (project.userId !== req.dbUser.id) {
-      return res.status(403).json({ error: "Access denied" });
-    }
 
     res.json(project);
   } catch (error) {
@@ -106,14 +118,20 @@ router.put("/:id", async (req, res) => {
 // Delete project for the authenticated user
 router.delete("/:id", async (req, res) => {
   try {
-    const project = await prisma.project.delete({
+    const existing = await prisma.project.findUnique({
       where: { id: req.params.id },
     });
 
+    if (!existing) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
     // Ensure the project belongs to the authenticated user
-    if (project.userId !== req.dbUser.id) {
+    if (existing.userId !== req.dbUser.id) {
       return res.status(403).json({ error: "Access denied" });
     }
+
+    await prisma.project.delete({ where: { id: req.params.id } });
 
     res.status(204).send();
   } catch (error) {

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ master, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ master, develop ]
 
 jobs:
   # Linting job
@@ -23,14 +23,14 @@ jobs:
           cache: 'pnpm'
       
       - name: Install dependencies
-        run: pnpm install --filter=${ {matrix.service} }
+        run: pnpm install --filter=${{ matrix.service }}
       
       - name: Run ESLint
-        run: pnpm run lint --filter=${ {matrix.service} } || true
+        run: pnpm run lint --filter=${{ matrix.service }} || true
         continue-on-error: true  # Allow failures for now as we implement
       
       - name: Run Prettier
-        run: pnpm run format:check --filter=${ {matrix.service} } || true
+        run: pnpm run format:check --filter=${{ matrix.service }} || true
         continue-on-error: true
 
   # Testing job
@@ -58,18 +58,18 @@ jobs:
         run: |
           pnpm install
           # Install Python dependencies for ai-generator
-          if [ "${ {matrix.service} }" = "ai-generator" ]; then
+          if [ "${{ matrix.service }}" = "ai-generator" ]; then
             cd services/ai-generator && pip install -r requirements.txt || true
           fi
       
       - name: Run tests
         run: |
-          if [ "${ {matrix.service} }" = "ai-generator" ]; then
+          if [ "${{ matrix.service }}" = "ai-generator" ]; then
             # Run Python tests
             cd services/ai-generator && python -m pytest || true
           else
             # Run JS/TS tests
-            pnpm test --filter=${ {matrix.service} } || true
+            pnpm test --filter=${{ matrix.service }} || true
           fi
         continue-on-error: true
 

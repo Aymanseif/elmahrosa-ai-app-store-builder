@@ -1,1 +1,12 @@
-const prisma = require("../prisma/client");\n\n// Auth controller (simplified, in real app use Clerk)\nexport const getUserByClerkId = async (clerkId) => {\n  return await prisma.user.findUnique({ where: { clerkId } });\n};\n\nexport const createUser = async (data) => {\n  return await prisma.user.create({ data });\n};\n
+const prisma = require("../prisma/client");
+
+// Auth controller (simplified, in real app use Clerk)
+const getUserByClerkId = async (clerkId) => {
+  return await prisma.user.findUnique({ where: { clerkId } });
+};
+
+const createUser = async (data) => {
+  return await prisma.user.create({ data });
+};
+
+module.exports = { getUserByClerkId, createUser };

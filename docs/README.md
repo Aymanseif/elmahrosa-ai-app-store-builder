@@ -1,1 +1,68 @@
-# Elmahrosa AI App Store Builder Documentation\n\n## Overview\n\nThis monorepo contains a full-stack platform for generating Android apps from natural language prompts.\n\n## Architecture\n\n### Frontend\n- Web App (Next.js 14) - User interface\n- Sharing Hub (Next.js) - Community app gallery\n\n### Backend Services\n- API Core (Node.js/Express) - Main API, authentication, project management\n- AI Generator (Python/FastAPI) - App generation using Claude API\n- Build Engine (Gradle/Fastlane/Docker) - Android build pipeline\n\n### Shared Packages\n- Database (Prisma models)\n- Sentinel Shield (@elmahrosa/sentinel) - Security auditing\n- Types (TypeScript definitions)\n- UI Component Library\n- Configuration\n\n## Getting Started\n\n1. Install dependencies:\n   ```bash\n   pnpm install\n   ```\n\n2. Set up environment variables:\n   Copy `.env.example` to `.env` and fill in the required values\n\n3. Start development servers:\n   ```bash\n   pnpm dev\n   ```\n\n## Features\n\n- User authentication with Clerk\n- Subscription tiers (Free, Pro, Enterprise)\n- Natural language to app generation\n- Security auditing with Sentinel Shield\n- Signed AAB/APK builds\n- Google Play publishing workflow\n- Community sharing hub\n- Multiple payment providers (Stripe, Fawry, Paymob, Dodo)\n\n## Development\n\n### Web App\nLocated in `/apps/web-app`\n\n### API Core\nLocated in `/services/api-core`\n\n### AI Generator\nLocated in `/services/ai-generator`\n\n### Build Engine\nLocated in `/services/build-engine`\n\n## Deployment\n\nSee `infra/` directory for Docker Compose, Terraform, and GitHub Actions configurations.\n
+# Elmahrosa AI App Store Builder Documentation
+
+## Overview
+
+This monorepo contains a full-stack platform for generating Android apps from natural language prompts.
+
+## Architecture
+
+### Frontend
+- Web App (Next.js 14) - User interface
+- Sharing Hub (Next.js) - Community app gallery
+
+### Backend Services
+- API Core (Node.js/Express) - Main API, authentication, project management
+- AI Generator (Python/FastAPI) - App generation using Claude API
+- Build Engine (Gradle/Fastlane/Docker) - Android build pipeline
+
+### Shared Packages
+- Database (Prisma models)
+- Sentinel Shield (@elmahrosa/sentinel) - Security auditing
+- Types (TypeScript definitions)
+- UI Component Library
+- Configuration
+
+## Getting Started
+
+1. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+
+2. Set up environment variables:
+   Copy `.env.example` to `.env` and fill in the required values
+
+3. Start development servers:
+   ```bash
+   pnpm dev
+   ```
+
+## Features
+
+- User authentication with Clerk
+- Subscription tiers (Free, Pro, Enterprise)
+- Natural language to app generation
+- Security auditing with Sentinel Shield
+- Signed AAB/APK builds
+- Google Play publishing workflow
+- Community sharing hub
+- Multiple payment providers (Stripe, Fawry, Paymob, Dodo)
+
+## Development
+
+### Web App
+Located in `/apps/web-app`
+
+### API Core
+Located in `/services/api-core`
+
+### AI Generator
+Located in `/services/ai-generator`
+
+### Build Engine
+Located in `/services/build-engine`
+
+## Deployment
+
+See `infra/` directory for Docker Compose, Terraform, and GitHub Actions configurations.
+

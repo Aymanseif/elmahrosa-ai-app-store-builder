@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function ProjectCard({ project }) {
   return (
-    <Link href={`/projects/${project.id}`} passHref>
+    <Link href={`/project/${project.id}`} passHref>
       <a className="group block border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors dark:border-gray-700 dark:hover:border-gray-600">
         <div className="p-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{project.name}</h3>

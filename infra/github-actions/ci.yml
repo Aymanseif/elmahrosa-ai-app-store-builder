@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ master, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ master, develop ]
 
 jobs:
   test:
@@ -43,14 +43,14 @@ jobs:
       - name: Run tests
         run: |
           # Run tests for each service
-          pnpm test --filter ${ {matrix.service} } || true
+          pnpm test --filter ${{ matrix.service }} || true
           # For Python service
-          if [ "${ {matrix.service} }" = "ai-generator" ]; then
+          if [ "${{ matrix.service }}" = "ai-generator" ]; then
             cd services/ai-generator && python -m pytest || true
           fi
       
       - name: Build Docker images
-        if: github.ref == refs/heads/main
+        if: github.ref == 'refs/heads/master'
         run: |
           # Build and push Docker images to registry
           echo "Building Docker images for production"

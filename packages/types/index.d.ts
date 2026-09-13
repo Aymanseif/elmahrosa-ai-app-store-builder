@@ -1,1 +1,37 @@
-export interface User {\n  id: string;\n  email: string;\n  name?: string;\n  image?: string;\n  clerkId: string;\n}\n\nexport interface Project {\n  id: string;\n  name: string;\n  description?: string;\n  userId: string;\n  status: string;\n}\n\nexport interface Subscription {\n  id: string;\n  userId: string;\n  plan: string;\n  status: string;\n  stripeId?: string;\n}\n\nexport interface Build {\n  id: string;\n  projectId: string;\n  status: string;\n  artifactUrl?: string;\n}\n\nexport interface Audit {\n  id: string;\n  projectId: string;\n  score: number;\n  report: any;\n}
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  image?: string;
+  clerkId: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  userId: string;
+  status: string;
+}
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  plan: string;
+  status: string;
+  stripeId?: string;
+}
+
+export interface Build {
+  id: string;
+  projectId: string;
+  status: string;
+  artifactUrl?: string;
+}
+
+export interface Audit {
+  id: string;
+  projectId: string;
+  score: number;
+  report: any;
+}

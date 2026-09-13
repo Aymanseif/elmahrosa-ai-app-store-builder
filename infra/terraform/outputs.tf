@@ -1,1 +1,24 @@
-output \"db_endpoint\" {\n  description = \"PostgreSQL endpoint\"\n  value       = aws_db_instance.main.endpoint\n}\n\noutput \"redis_endpoint\" {\n  description = \"Redis endpoint\"\n  value       = aws_elasticache_replication_group.main.primary_endpoint_address\n}\n\noutput \"vpc_id\" {\n  description = \"VPC ID\"\n  value       = aws_vpc.main.id\n}\n\noutput \"subnet_ids\" {\n  description = \"Subnet IDs for ECS\"\n  value       = [aws_subnet.public[0].id, aws_subnet.public[1].id]\n}\n\noutput \"security_group_ids\" {\n  description = \"Security group IDs for services\"\n  value       = [aws_security_group.services.id]\n}
+output "db_endpoint" {
+  description = "PostgreSQL endpoint"
+  value       = aws_db_instance.main.endpoint
+}
+
+output "redis_endpoint" {
+  description = "Redis endpoint"
+  value       = aws_elasticache_replication_group.main.primary_endpoint_address
+}
+
+output "vpc_id" {
+  description = "VPC ID"
+  value       = aws_vpc.main.id
+}
+
+output "subnet_ids" {
+  description = "Subnet IDs for ECS"
+  value       = [aws_subnet.public[0].id, aws_subnet.public[1].id]
+}
+
+output "security_group_ids" {
+  description = "Security group IDs for services"
+  value       = [aws_security_group.services.id]
+}

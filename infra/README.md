@@ -1,1 +1,53 @@
-# Infrastructure\n\nThis directory contains infrastructure configurations for the Elmahrosa AI App Store Builder.\n\n## Directories\n\n- `docker-compose.yml` - Local development environment\n- `terraform/` - AWS infrastructure as code\n- `github-actions/` - CI/CD workflows\n\n## Local Development\n\nTo start the development environment:\n\n```bash\ncp .env.example .env\n# Edit .env with your values\ndocker compose up\n```\n\nThis will start:\n- PostgreSQL database\n- Redis cache\n- API Core service\n- AI Generator service\n- Build Engine service\n\n## AWS Deployment\n\nTo deploy to AWS using Terraform:\n\n```bash\ncd terraform\nterraform init\nterraform plan\nterraform apply\n```\n\nYou will need to provide:\n- AWS credentials\n- Database password\n- Other required variables\n\n## CI/CD\n\nGitHub Actions workflows are located in `github-actions/`:\n- `ci.yml` - Runs tests, linting, and security scans\n- `cd.yml` - Deploys to AWS ECS on main branch pushes\n\n## Services\n\nEach service in `../services/` has its own Dockerfile for containerization.\n
+# Infrastructure
+
+This directory contains infrastructure configurations for the Elmahrosa AI App Store Builder.
+
+## Directories
+
+- `docker-compose.yml` - Local development environment
+- `terraform/` - AWS infrastructure as code
+- `github-actions/` - CI/CD workflows
+
+## Local Development
+
+To start the development environment:
+
+```bash
+cp .env.example .env
+# Edit .env with your values
+docker compose up
+```
+
+This will start:
+- PostgreSQL database
+- Redis cache
+- API Core service
+- AI Generator service
+- Build Engine service
+
+## AWS Deployment
+
+To deploy to AWS using Terraform:
+
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+You will need to provide:
+- AWS credentials
+- Database password
+- Other required variables
+
+## CI/CD
+
+GitHub Actions workflows are located in `github-actions/`:
+- `ci.yml` - Runs tests, linting, and security scans
+- `cd.yml` - Deploys to AWS ECS on main branch pushes
+
+## Services
+
+Each service in `../services/` has its own Dockerfile for containerization.
+

@@ -100,7 +100,7 @@ export default function ProjectCreate() {
                   type="text"
                   value={formData[field.name] || ""}
                   onChange={e => handleChange(field.name, e.target.value)}
-                  {field.required && "required"}
+                  required={field.required}
                   className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2"
                   placeholder={field.placeholder}
                   maxLength={field.maxLength}
@@ -110,7 +110,7 @@ export default function ProjectCreate() {
                 <textarea
                   value={formData[field.name] || ""}
                   onChange={e => handleChange(field.name, e.target.value)}
-                  {field.required && "required"}
+                  required={field.required}
                   className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2"
                   rows={field.rows || 4}
                   placeholder={field.placeholder}
@@ -121,7 +121,7 @@ export default function ProjectCreate() {
                 <select
                   value={formData[field.name] || ""}
                   onChange={e => handleChange(field.name, e.target.value)}
-                  {field.required && "required"}
+                  required={field.required}
                   className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2"
                 >
                   <option value="">{field.placeholder || "Select an option"}</option>

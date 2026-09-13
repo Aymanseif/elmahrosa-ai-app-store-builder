@@ -19,9 +19,30 @@ console.log(result.score);
 
 ## API
 
-### audit(code: string): Promise<{ score: number, report: object }>
+### audit(code: string): Promise<{ score, report }>
 
-Performs a security audit on the provided source code and returns a score (0-100) and a detailed report.
+Performs a static security audit on the provided source string and returns a
+score (0-100) and a report array of findings:
+
+```js
+{
+  score: 62,
+  report: [
+    { rule: "SEC-003", severity: "high", message: "Shell command execution", snippet: "..." }
+  ]
+}
+```
+
+### auditFile(filePath: string): Promise<{ score, report }>
+
+Reads a single file and audits its contents. Findings include the `file` path.
+
+### auditDirectory(dir: string): Promise<{ score, report }>
+
+Walks a directory tree (skipping `node_modules`, `.git`, `.next`) and audits all
+source files (`*.js, *.jsx, *.ts, *.tsx, *.py, *.java, *.kt, *.go, *.rb, *.php`).
+
+Rules are defined in `lib/index.js` as `RULES` — extend the array to add checks.
 
 ## Development
 

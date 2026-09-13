@@ -145,6 +145,7 @@ model Project {
   projectTemplates ProjectTemplate[]
   projectFeatures ProjectFeature[]
   teams         Team[] @relation("ProjectTeams")
+  teamProjects  Team[] @relation("TeamProject")
   buildCount  Int      @default(0)
   auditCount  Int      @default(0)
   createdAt   DateTime @default(now())
@@ -243,7 +244,7 @@ model ProjectFeature {
 model CommunityPost {
   id          String   @id @default(cuid())
   authorId    String
-  author      User     @relation(fields: [authorId], references: [id])
+  author      User     @relation("AuthorPosts", fields: [authorId], references: [id])
   title       String
   content     String?
   imageUrl    String?
@@ -261,7 +262,7 @@ model CommunityComment {
   postId      String
   post        CommunityPost @relation(fields: [postId], references: [id])
   authorId    String
-  author      User     @relation(fields: [authorId], references: [id])
+  author      User     @relation("AuthorComments", fields: [authorId], references: [id])
   content     String?
   likes       Int      @default(0)
   createdAt   DateTime @default(now())
@@ -290,9 +291,9 @@ model Team {
 model TeamMember {
   id          String   @id @default(cuid())
   teamId      String
-  team        Team     @relation(fields: [teamId], references: [id])
+  team        Team     @relation("TeamMembers", fields: [teamId], references: [id])
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation("UserTeamMember", fields: [userId], references: [id])
   role        String   @default("member") // owner, admin, member
   joinedAt    DateTime @default(now())
   @@unique([teamId, userId])

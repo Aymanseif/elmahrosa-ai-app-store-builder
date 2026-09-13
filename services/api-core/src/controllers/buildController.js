@@ -93,23 +93,32 @@ const updateBuild = async (req, res) => {
     const { id } = req.params;
     const { status, artifactUrl } = req.body;
 
-    const build = await prisma.build.update({
+    const build = await prisma.build.findUnique({ where: { id } });
+
+    if (!build) {
+      return res.status(404).json({ error: "Build not found" });
+    }
+
+    // Verify that the project belongs to the authenticated user
+    const project = await prisma.project.findUnique({
+      where: { id: build.projectId },
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    if (project.userId !== req.dbUser.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const updated = await prisma.build.update({
       where: { id },
       data: {
         status,
         artifactUrl,
       },
     });
-
-    // Verify that the project belongs to the authenticated user
-    // We need to fetch the project to check the userId
-    const project = await prisma.project.findUnique({
-      where: { id: build.projectId },
-    });
-
-    if (project.userId !== req.dbUser.id) {
-      return res.status(403).json({ error: "Access denied" });
-    }
 
     // If the build is completed (success or failed), increment the buildCount of the project
     if (status === "success" || status === "failed") {
@@ -123,7 +132,7 @@ const updateBuild = async (req, res) => {
       });
     }
 
-    res.json(build);
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
