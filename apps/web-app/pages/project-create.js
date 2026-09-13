@@ -1,14 +1,15 @@
 import { useState } from "react"
 import { useRouter } from "next/router"
 import { useAuth } from "@clerk/nextjs"
+import { WIZARD_STEPS } from '../lib/project-wizard-steps'
 
 export default function ProjectCreate() {
   const { signedIn } = useAuth()
   const router = useRouter()
-  const [step, setStep] = useState(1)
+  const [stepIndex, setStepIndex] = useState(0)
   const [formData, setFormData] = useState({
     appName: "",
-    description: "",
+    appDescription: "",
     templateType: "",
     theme: "",
     features: [],
@@ -21,26 +22,20 @@ export default function ProjectCreate() {
     return null
   }
 
-  const steps = [
-    { id: 1, title: "App Name", description: "Enter your app's name" },
-    { id: 2, title: "Description", description: "Describe your app" },
-    { id: 3, title: "Template Type", description: "Choose a template" },
-    { id: 4, title: "Theme", description: "Select a theme" },
-    { id: 5, title: "Features", description: "Pick features" },
-  ];
-  const currentStep = steps.find(s => s.id === step);
+  const currentStep = WIZARD_STEPS[stepIndex]
 
   const handleNext = () => {
-    if (step < steps.length) setStep(step + 1)
+    if (stepIndex < WIZARD_STEPS.length - 1) setStepIndex(stepIndex + 1)
   }
 
   const handlePrev = () => {
-    if (step > 1) setStep(step - 1)
+    if (stepIndex > 0) setStepIndex(stepIndex - 1)
   }
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -57,7 +52,7 @@ export default function ProjectCreate() {
       router.push(`/project/${newProjectId}`)
     } catch (err) {
       setError("Failed to create project")
-      setLogging(false)
+      setLoading(false)
     }
   }
 
@@ -72,21 +67,21 @@ export default function ProjectCreate() {
 
       {/* Step Indicator */}
       <div className="flex mb-6">
-        {steps.map(s => (
+        {WIZARD_STEPS.map((step, index) => (
           <div
-            key={s.id}
+            key={step.id}
             className={`flex-1 text-center py-2 ${
-              s.id < step
+              index < stepIndex
                 ? "bg-blue-500 text-white"
-                : s.id === step
+                : index === stepIndex
                 ? "bg-blue-300 text-blue-800"
                 : "bg-gray-200 text-gray-500"
             }`}
           >
-            <div>{s.id}</div>
-            <div className="text-xs">{s.title}</div>
+            <div>{index + 1}</div>
+            <div className="text-xs">{step.title}</div>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Step Content */}
@@ -94,52 +89,108 @@ export default function ProjectCreate() {
         <h2 className="text-xl font-bold mb-4">{currentStep.title}</h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">{currentStep.description}</p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {step === 1 && (
-            <>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                App Name
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {currentStep.fields.map((field) => (
+            <div key={field.name}>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {field.label}
               </label>
-              <input
-                type="text"
-                value={formData.appName}
-                onChange={e => handleChange("appName", e.target.value)}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2"
-                placeholder="Enter app name"
-              />
-            </>
-          )}
-          {step === 2 && (
-            <>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Description
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={e => handleChange("description", e.target.value)}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2"
-                rows={4}
-                placeholder="Describe your app"
-              />
-            </>
-          )}
-          {step === 3 && (
-            <>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Template Type
-              </label>
-              <select
-                value={formData.templateType}
-                onChange={e => handleChange("templateType", e.target.value)}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2"
+              {field.type === "text" && (
+                <input
+                  type="text"
+                  value={formData[field.name] || ""}
+                  onChange={e => handleChange(field.name, e.target.value)}
+                  {field.required && "required"}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2"
+                  placeholder={field.placeholder}
+                  maxLength={field.maxLength}
+                />
+              )}
+              {field.type === "textarea" && (
+                <textarea
+                  value={formData[field.name] || ""}
+                  onChange={e => handleChange(field.name, e.target.value)}
+                  {field.required && "required"}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2"
+                  rows={field.rows || 4}
+                  placeholder={field.placeholder}
+                  maxLength={field.maxLength}
+                />
+              )}
+              {field.type === "select" && (
+                <select
+                  value={formData[field.name] || ""}
+                  onChange={e => handleChange(field.name, e.target.value)}
+                  {field.required && "required"}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2"
+                >
+                  <option value="">{field.placeholder || "Select an option"}</option>
+                  {field.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {field.type === "checkbox-group" && (
+                <div className="space-y-2">
+                  {field.options.map((option) => (
+                    <div key={option.value} className="flex items-start">
+                      <input
+                        type="checkbox"
+                        value={option.value}
+                        checked={(formData[field.name] || []).includes(option.value)}
+                        onChange={e => {
+                          const checkedOptions = formData[field.name] || []
+                          if (e.target.checked) {
+                            setFormData(prev => ({ ...prev, [field.name]: [...checkedOptions, option.value] }))
+                          } else {
+                            setFormData(prev => ({ ...prev, [field.name]: checkedOptions.filter(v => v !== option.value) }))
+                          }
+                        }}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label className="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {option.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {stepIndex < WIZARD_STEPS.length - 1 && (
+            <div className="flex justify-between">
+              {stepIndex > 0 && (
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                >
+                  Previous
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-blue-400 hover:bg-blue-600"
               >
-                <option value="">Select a template</option>
-                <option value="saas">SaaS Dashboard</option>
-              </select>
-            </>
+                {loading ? "Creating..." : "Next Step"}
+              </button>
+            </div>
+          )}
+
+          {stepIndex === WIZARD_STEPS.length - 1 && (
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-blue-400 hover:bg-blue-600"
+              >
+                {loading ? "Creating..." : "Create Project"}
+              </button>
+            </div>
           )}
         </form>
       </div>
