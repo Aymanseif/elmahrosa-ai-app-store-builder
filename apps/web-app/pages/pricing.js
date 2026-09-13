@@ -14,9 +14,12 @@ export default function Pricing() {
             <li>3 builds/month</li>
             <li>No publishing</li>
           </ul>
-          <a href="https://dodo.pe/pkal21u3gd" target="_blank" rel="noopener noreferrer" className="w-full inline-block text-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+          <button
+            disabled
+            className="w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded opacity-50 cursor-not-allowed"
+          >
             Start Free Plan
-          </a>
+          </button>
         </div>
         {/* Pro Tier */}
         <div className="border p-6 rounded-lg bg-blue-50">
@@ -28,11 +31,13 @@ export default function Pricing() {
             <li>One-click publishing</li>
             <li>30 builds/month</li>
             <li>10 publishing actions</li>
-            <li>Stripe/Fawry/Paymob/Dodo</li>
           </ul>
-          <a href="https://dodo.pe/8xgua9wiwkx" target="_blank" rel="noopener noreferrer" className="w-full inline-block text-center bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+          <button
+            disabled
+            className="w-full text-center bg-blue-500 text-white font-bold py-2 px-4 rounded opacity-50 cursor-not-allowed"
+          >
             Choose Pro Plan
-          </a>
+          </button>
         </div>
         {/* Enterprise Tier */}
         <div className="border p-6 rounded-lg">
@@ -45,11 +50,17 @@ export default function Pricing() {
             <li>Team support</li>
             <li>Custom limits</li>
           </ul>
-          <a href="https://dodo.pe/proteos" target="_blank" rel="noopener noreferrer" className="w-full inline-block text-center bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">
+          <button
+            disabled
+            className="w-full text-center bg-purple-500 text-white font-bold py-2 px-4 rounded opacity-50 cursor-not-allowed"
+          >
             Choose Enterprise Plan
-          </a>
+          </button>
         </div>
       </div>
+      <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">
+        Online payments are coming soon. Paid plans are not yet purchasable.
+      </p>
     </div>
   )
 }

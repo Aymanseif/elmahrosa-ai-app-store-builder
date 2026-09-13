@@ -6,6 +6,7 @@ const projectRouter = require("./routes/project");
 const subscriptionRouter = require("./routes/subscription");
 const buildRouter = require("./routes/build");
 const auditRouter = require("./routes/audit");
+const stripeWebhookRouter = require("./routes/stripeWebhook");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,6 +38,12 @@ app.use(
   })
 );
 
+// The Stripe webhook MUST be mounted before app.use(express.json()) so the
+// raw body is available for signature verification. (FIX: finding C-6b —
+// the webhook previously lived behind the JSON parser and constructEvent
+// always failed.)
+app.use("/api/subscriptions", stripeWebhookRouter);
+
 app.use(express.json({ limit: "1mb" }));
 
 app.use("/api/auth", authRouter);
@@ -44,6 +51,11 @@ app.use("/api/projects", projectRouter);
 app.use("/api/subscriptions", subscriptionRouter);
 app.use("/api/builds", buildRouter);
 app.use("/api/audits", auditRouter);
+
+// Liveness endpoint for compose healthchecks and load balancer checks
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", uptime: process.uptime() });
+});
 
 app.get("/", (req, res) => {
   res.json({ message: "API Core is running" });

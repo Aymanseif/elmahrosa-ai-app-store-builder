@@ -1,5 +1,10 @@
 # Build Engine
 
+> **EXPERIMENTAL — QUARANTINED (Phase 0.7 of the remediation order).**
+> The sample app in `app/` cannot currently compile (8 independent defects,
+> finding C-5). This service is excluded from docker-compose and CI matrices
+> until the Phase 3 rebuild lands. Do not treat this service as functional.
+
 This service handles building Android apps using Gradle and Fastlane.
 
 ## Overview

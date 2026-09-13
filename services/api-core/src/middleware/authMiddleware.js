@@ -17,52 +17,69 @@ function getKey(header, callback) {
 }
 
 const authenticateToken = async (req, res, next) => {
-  let payload;
-
   try {
+    const payload = await verifyJwt(req);
+    try {
+      // Assuming the Clerk ID is in the 'sub' claim
+      const clerkId = payload.sub;
+      const dbUser = await prisma.user.findUnique({ where: { clerkId } });
+      if (!dbUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      req.user = payload; // Attach the decoded token payload
+      req.dbUser = dbUser; // Attach the database user object
+      next();
+    } catch (error) {
+      console.error('Error loading user for authenticated request:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  } catch (error) {
+    return handleVerifyError(error, res);
+  }
+};
+
+// Verifies the JWT and attaches the payload, but does not require the user
+// to exist in the database. Used by the user-upsert route, where a valid
+// token may legitimately belong to a brand-new user.
+const requireValidToken = async (req, res, next) => {
+  try {
+    req.user = await verifyJwt(req);
+    next();
+  } catch (error) {
+    return handleVerifyError(error, res);
+  }
+};
+
+function verifyJwt(req) {
+  return new Promise((resolve, reject) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
 
     if (!token) {
-      return res.status(401).json({ error: 'Access token required' });
+      return reject(new jwt.JsonWebTokenError('Access token required'));
     }
 
-    payload = await new Promise((resolve, reject) => {
-      jwt.verify(token, getKey, { issuer: process.env.CLERK_ISSUER_URL }, (err, decoded) => {
-        if (err) return reject(err);
-        resolve(decoded);
-      });
+    jwt.verify(token, getKey, { issuer: process.env.CLERK_ISSUER_URL }, (err, decoded) => {
+      if (err) return reject(err);
+      resolve(decoded);
     });
-  } catch (error) {
-    // FIX: jwt.verify failures (expired token, bad signature, wrong issuer,
-    // JWKS lookup failure) were previously falling into the generic 500
-    // handler below, which makes a routine "please log in again" case look
-    // like a server outage to API consumers.
-    if (
-      error.name === 'JsonWebTokenError' ||
-      error.name === 'TokenExpiredError' ||
-      error.name === 'NotBeforeError'
-    ) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
-    }
-    console.error('Auth token verification failed:', error);
-    return res.status(401).json({ error: 'Unable to verify access token' });
-  }
+  });
+}
 
-  try {
-    // Assuming the Clerk ID is in the 'sub' claim
-    const clerkId = payload.sub;
-    const dbUser = await prisma.user.findUnique({ where: { clerkId } });
-    if (!dbUser) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    req.user = payload; // Attach the decoded token payload
-    req.dbUser = dbUser; // Attach the database user object
-    next();
-  } catch (error) {
-    console.error('Error loading user for authenticated request:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+function handleVerifyError(error, res) {
+  // FIX: jwt.verify failures (expired token, bad signature, wrong issuer,
+  // JWKS lookup failure) were previously falling into the generic 500
+  // handler, which makes a routine "please log in again" case look
+  // like a server outage to API consumers.
+  if (
+    error.name === 'JsonWebTokenError' ||
+    error.name === 'TokenExpiredError' ||
+    error.name === 'NotBeforeError'
+  ) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
-};
+  console.error('Auth token verification failed:', error);
+  return res.status(401).json({ error: 'Unable to verify access token' });
+}
 
-module.exports = { authenticateToken };
+module.exports = { authenticateToken, requireValidToken };

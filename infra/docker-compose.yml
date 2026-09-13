@@ -53,15 +53,10 @@ services:
     depends_on:
       - api-core
 
-  build-engine:
-    build: ../services/build-engine
-    ports:
-      - "8080:8080"
-    environment:
-      - KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD}
-      - KEY_PASSWORD=${KEY_PASSWORD}
-    depends_on:
-      - api-core
+# NOTE: services/build-engine is intentionally NOT defined here. The app
+# scaffold cannot compile (see the remediation order, finding C-5) and is
+# quarantined until the Phase 3 rebuild lands. Do not re-add it to compose
+# until `./gradlew assembleDebug` passes inside its image.
 
 volumes:
   postgres_data:

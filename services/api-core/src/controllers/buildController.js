@@ -1,5 +1,8 @@
 const prisma = require("../prisma/client");
 
+// Mirrors the BuildStatus enum in prisma/schema.prisma (uppercase values).
+const BUILD_STATUSES = ["PENDING", "BUILDING", "SUCCESS", "FAILED", "CANCELED"];
+
 // Create a new build
 const createBuild = async (req, res) => {
   try {
@@ -22,7 +25,10 @@ const createBuild = async (req, res) => {
     const build = await prisma.build.create({
       data: {
         projectId,
-        status: "pending", // Default status
+        // FIX: the DB stores BuildStatus as an uppercase enum (PENDING,
+        // BUILDING, ...). Writing lowercase "pending" made Prisma reject the
+        // create with an enum-parse error, so build creation always 500'd.
+        status: "PENDING",
       },
     });
 
@@ -96,6 +102,16 @@ const updateBuild = async (req, res) => {
     const { id } = req.params;
     const { status, artifactUrl } = req.body;
 
+    // FIX: status was previously taken from the body unvalidated and compared
+    // against lowercase "success"/"failed" that could never match the
+    // uppercase enum. Whitelist against the DB enum values and reject
+    // anything else with a 400 instead of a Prisma 500.
+    if (status !== undefined && !BUILD_STATUSES.includes(status)) {
+      return res
+        .status(400)
+        .json({ error: `status must be one of: ${BUILD_STATUSES.join(", ")}` });
+    }
+
     const build = await prisma.build.findUnique({ where: { id } });
 
     if (!build) {
@@ -123,8 +139,8 @@ const updateBuild = async (req, res) => {
       },
     });
 
-    // If the build is completed (success or failed), increment the buildCount of the project
-    if (status === "success" || status === "failed") {
+    // If the build completed, increment the buildCount of the project
+    if (status === "SUCCESS" || status === "FAILED") {
       await prisma.project.update({
         where: { id: build.projectId },
         data: {
