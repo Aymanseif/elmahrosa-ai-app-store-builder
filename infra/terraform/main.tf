@@ -81,26 +81,29 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Security group for the ECS services (public-facing HTTP/HTTPS)
+# Security group for the ECS services. FIX: this previously allowed inbound
+# 80/443 from the entire internet, but the containers listen on 3000/8000 and
+# the public entry point is the ALB. Tasks now accept traffic from the ALB
+# security group on their container ports only.
 resource "aws_security_group" "services" {
   name        = "${var.project_name}-services-sg"
-  description = "Allow HTTP/HTTPS inbound to application services"
+  description = "Allow ALB traffic inbound to application services"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "api-core / web-app (port 3000) from ALB"
+    from_port       = 3000
+    to_port         = 3000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
   }
 
   ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "ai-generator (port 8000) from ALB"
+    from_port       = 8000
+    to_port         = 8000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
   }
 
   egress {
@@ -169,18 +172,18 @@ resource "aws_db_subnet_group" "main" {
 }
 
 resource "aws_db_instance" "main" {
-  identifier              = "${var.project_name}-postgres"
-  engine                  = "postgres"
-  engine_version          = "15"
-  instance_class          = "db.t3.micro"
-  allocated_storage       = 20
-  db_name                 = "elmahrosa" # FIX: `name` is deprecated on aws_db_instance in provider v5+; use `db_name`
-  username                = "elmahrosa"
-  password                = var.db_password
-  db_subnet_group_name    = aws_db_subnet_group.main.name
-  vpc_security_group_ids  = [aws_security_group.data.id]
-  publicly_accessible     = false
-  skip_final_snapshot     = true
+  identifier             = "${var.project_name}-postgres"
+  engine                 = "postgres"
+  engine_version         = "15"
+  instance_class         = "db.t3.micro"
+  allocated_storage      = 20
+  db_name                = "elmahrosa" # FIX: `name` is deprecated on aws_db_instance in provider v5+; use `db_name`
+  username               = "elmahrosa"
+  password               = var.db_password
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.data.id]
+  publicly_accessible    = false
+  skip_final_snapshot    = true
   tags = {
     Name        = "${var.project_name}-postgres"
     Environment = var.environment
@@ -200,14 +203,14 @@ resource "aws_elasticache_subnet_group" "main" {
 resource "aws_elasticache_replication_group" "main" {
   replication_group_id       = "${var.project_name}-redis"
   description                = "Redis cluster for Elmahrosa"
-  engine                      = "redis"
-  engine_version               = "7.0"
-  node_type                    = "cache.t3.micro"
-  num_node_groups               = 1
-  replicas_per_node_group       = 0
-  automatic_failover_enabled    = false
-  subnet_group_name             = aws_elasticache_subnet_group.main.name
-  security_group_ids            = [aws_security_group.data.id]
+  engine                     = "redis"
+  engine_version             = "7.0"
+  node_type                  = "cache.t3.micro"
+  num_node_groups            = 1
+  replicas_per_node_group    = 0
+  automatic_failover_enabled = false
+  subnet_group_name          = aws_elasticache_subnet_group.main.name
+  security_group_ids         = [aws_security_group.data.id]
   tags = {
     Name        = "${var.project_name}-redis"
     Environment = var.environment

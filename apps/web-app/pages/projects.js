@@ -1,12 +1,16 @@
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/router"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import ProjectCard from "@/components/ProjectCard"
+import api from "@/lib/api"
 
 export default function Projects() {
-  const { isLoaded, isSignedIn } = useAuth()
+  const { isLoaded, isSignedIn, getToken } = useAuth()
   const router = useRouter()
+  const [projects, setProjects] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -14,16 +18,31 @@ export default function Projects() {
     }
   }, [isLoaded, isSignedIn, router])
 
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const token = await getToken()
+        const data = await api.getProjects(token)
+        if (!cancelled) setProjects(Array.isArray(data) ? data : [])
+      } catch (err) {
+        if (!cancelled) setError(err.message)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [isLoaded, isSignedIn, getToken])
+
   if (!isLoaded || !isSignedIn) {
     return null
   }
-
-  // Mock projects data - in a real app, fetch from API
-  const mockProjects = [
-    { id: "1", name: "Project Alpha", description: "A SaaS dashboard for managing tasks.", updatedAt: new Date() },
-    { id: "2", name: "Project Beta", description: "An e-commerce store with payment integration.", updatedAt: new Date(Date.now() - 86400000) },
-    { id: "3", name: "Project Gamma", description: "A blog platform with SEO features.", updatedAt: new Date(Date.now() - 2 * 86400000) },
-  ]
 
   return (
     <div className="container mx-auto p-4">
@@ -37,11 +56,28 @@ export default function Projects() {
         </Link>
       </div>
 
-      <div className="space-y-4">
-        {mockProjects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
-      </div>
+      {error && (
+        <div className="mb-4 text-sm text-red-600" role="alert">
+          Failed to load projects: {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full border-4 border-blue-500 border-t-transparent h-8 w-8"></div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+          {!loading && projects.length === 0 && !error && (
+            <p className="text-gray-600 dark:text-gray-400">
+              No projects yet. Create your first project to get started.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

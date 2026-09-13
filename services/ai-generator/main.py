@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uuid
 
+from claude import generate_app_structure
+
 app = FastAPI()
 
 
@@ -17,12 +19,7 @@ class GenerateAppResponse(BaseModel):
     structure: dict
 
 
-@app.post("/generate", response_model=GenerateAppResponse)
-async def generate_app(request: GenerateAppRequest):
-    # In a real implementation, we would call the Claude API to generate the code.
-    # For now, we return a mock structure.
-    project_id = str(uuid.uuid4())
-
+def _mock_structure(package_name):
     main_activity_kt = (
         "// MainActivity content\n"
         "package com.example.app\n\n"
@@ -60,7 +57,7 @@ async def generate_app(request: GenerateAppRequest):
 
     android_manifest_xml = (
         "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n"
-        f"    package=\"{request.packageName}\">\n"
+        f"    package=\"{package_name}\">\n"
         "    <application\n"
         "        android:allowBackup=\"true\"\n"
         "        android:label=\"@string/app_name\"\n"
@@ -149,9 +146,23 @@ async def generate_app(request: GenerateAppRequest):
         }
     }
 
+    return structure
+
+
+@app.post("/generate", response_model=GenerateAppResponse)
+async def generate_app(request: GenerateAppRequest):
+    project_id = str(uuid.uuid4())
+
+    # Try real Claude generation first; fall back to the template mock when
+    # ANTHROPIC_API_KEY is not configured or generation fails.
+    structure = generate_app_structure(request.prompt, request.packageName)
+    generated_by = "Claude" if structure else "template"
+    if structure is None:
+        structure = _mock_structure(request.packageName)
+
     return GenerateAppResponse(
         projectId=project_id,
-        message="App generated successfully (mock)",
+        message=f"App generated successfully ({generated_by})",
         structure=structure,
     )
 

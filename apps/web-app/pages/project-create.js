@@ -2,9 +2,10 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/router"
 import { useAuth } from "@clerk/nextjs"
 import { WIZARD_STEPS } from '../lib/project-wizard-steps'
+import api from "@/lib/api"
 
 export default function ProjectCreate() {
-  const { isLoaded, isSignedIn } = useAuth()
+  const { isLoaded, isSignedIn, getToken } = useAuth()
   const router = useRouter()
   const [stepIndex, setStepIndex] = useState(0)
   const [formData, setFormData] = useState({
@@ -59,12 +60,14 @@ export default function ProjectCreate() {
         setLoading(false)
         return
       }
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      const newProjectId = Math.random().toString(36).substr(2, 9)
-      router.push(`/project/${newProjectId}`)
+      const token = await getToken()
+      const project = await api.createProject(
+        { name: formData.appName.trim(), description: formData.appDescription },
+        token
+      )
+      router.push(`/project/${project.id}`)
     } catch (err) {
-      setError("Failed to create project")
+      setError(err.message || "Failed to create project")
       setLoading(false)
     }
   }

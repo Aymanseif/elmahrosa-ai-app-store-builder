@@ -21,3 +21,22 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "image_tag" {
+  description = "Container image tag to deploy for all ECS services"
+  type        = string
+  default     = "latest"
+}
+
+variable "jwt_secret" {
+  description = "Secret used to verify JWTs in api-core"
+  type        = string
+  sensitive   = true
+}
+
+variable "anthropic_api_key" {
+  description = "Anthropic API key used by the ai-generator service"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
