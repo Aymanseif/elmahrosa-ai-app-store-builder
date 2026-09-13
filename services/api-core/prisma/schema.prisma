@@ -7,6 +7,108 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum UserRole {
+  ADMIN
+  USER
+  GUEST
+}
+
+enum ProjectStatus {
+  DRAFT
+  BUILDING
+  BUILT
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  ARCHIVED
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+  UNPAID
+}
+
+enum BuildStatus {
+  PENDING
+  BUILDING
+  SUCCESS
+  FAILED
+  CANCELED
+}
+
+enum AuditStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentMethod {
+  STRIPE
+  FAWRY
+  PAYMOB
+  DODO
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING
+  PAID
+  VOIDED
+  UNCOLLECTIBLE
+}
+
+enum WebhookEventType {
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  INVOICE_CREATED
+  INVOICE_PAID
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_UPDATED
+  SUBSCRIPTION_CANCELED
+  CUSTOMER_CREATED
+  CUSTOMER_UPDATED
+  CHARGE_REFUNDED
+}
+
+enum ActivityLogType {
+  USER_LOGIN
+  USER_LOGOUT
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_DELETED
+  BUILD_STARTED
+  BUILD_COMPLETED
+  BUILD_FAILED
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_UPDATED
+  SUBSCRIPTION_CANCELED
+  PAYMENT_PROCESSED
+  TEMPLATE_USED
+  FEATURE_ADDED
+  COMMENT_ADDED
+  LIKE_ADDED
+  TEAM_INVITED
+  TEAM_JOINED
+  TEAM_LEFT
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -14,10 +116,21 @@ model User {
   image         String?
   clerkId       String   @unique
   stripeCustomerId String? @unique
+  role          UserRole @default(USER)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   projects      Project[]
   subscriptions Subscription[]
+  teamMembers TeamMember[] @relation("UserTeamMember")
+  payments      Payment[]
+  invoices      Invoice[]
+  activityLogs  ActivityLog[]
+  communityPosts CommunityPost[] @relation("AuthorPosts")
+  communityComments CommunityComment[] @relation("AuthorComments")
+  ownedTeams Team[] @relation("OwnedTeams")
+
+  @@index([email], map: "user_email_idx")
+  @@index([clerkId], map: "user_clerk_id_idx")
 }
 
 model Project {
@@ -26,35 +139,47 @@ model Project {
   description String?
   userId      String
   user        User     @relation(fields: [userId], references: [id])
-  status      String   @default("draft") // draft, building, built, publishing, published, failed
+  status      ProjectStatus @default(DRAFT)
   builds      Build[]
   audits      Audit[]
+  projectTemplates ProjectTemplate[]
+  projectFeatures ProjectFeature[]
+  teams         Team[] @relation("ProjectTeams")
   buildCount  Int      @default(0)
   auditCount  Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId], map: "project_user_id_idx")
+  @@index([status], map: "project_status_idx")
 }
 
 model Subscription {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id])
-  plan        String   // free, pro, enterprise
-  status      String   // active, canceled, past_due
+  plan        SubscriptionPlan
+  status      SubscriptionStatus
   stripeId    String?
   currentPeriodEnd DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId], map: "subscription_user_id_idx")
+  @@index([plan, status], map: "subscription_plan_status_idx")
 }
 
 model Build {
   id          String   @id @default(cuid())
   projectId   String
   project     Project  @relation(fields: [projectId], references: [id])
-  status      String   // pending, success, failed
+  status      BuildStatus @default(PENDING)
   artifactUrl String?  // URL to the AAB/APK
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([projectId], map: "build_project_id_idx")
+  @@index([status], map: "build_status_idx")
 }
 
 model Audit {
@@ -63,5 +188,177 @@ model Audit {
   project     Project  @relation(fields: [projectId], references: [id])
   score       Int      // 0-100
   report      Json     // Sentinel Shield audit report
+  status      AuditStatus @default(PENDING)
   createdAt   DateTime @default(now())
+
+  @@index([projectId], map: "audit_project_id_idx")
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  previewUrl  String?
+  category    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  projectTemplates ProjectTemplate[]
+}
+
+model Feature {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  projectFeatures ProjectFeature[]
+}
+
+model ProjectTemplate {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  templateId  String
+  template    Template @relation(fields: [templateId], references: [id])
+  configured  Json?    // Template-specific configuration
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([projectId, templateId])
+}
+
+model ProjectFeature {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  featureId   String
+  feature     Feature  @relation(fields: [featureId], references: [id])
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([projectId, featureId])
+}
+
+model CommunityPost {
+  id          String   @id @default(cuid())
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  title       String
+  content     String?
+  imageUrl    String?
+  likes       Int      @default(0)
+  commentCount Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  comments    CommunityComment[]
+
+  @@index([authorId], map: "community_post_author_idx")
+}
+
+model CommunityComment {
+  id          String   @id @default(cuid())
+  postId      String
+  post        CommunityPost @relation(fields: [postId], references: [id])
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  content     String?
+  likes       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([postId], map: "community_comment_post_idx")
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  owner       User     @relation("OwnedTeams", fields: [ownerId], references: [id])
+  projectId   String?
+  project     Project? @relation("TeamProject", fields: [projectId], references: [id])
+  members     TeamMember[] @relation("TeamMembers")
+  projects    Project[] @relation("ProjectTeams")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId], map: "team_owner_id_idx")
+  @@index([projectId], map: "team_project_id_idx")
+}
+
+model TeamMember {
+  id          String   @id @default(cuid())
+  teamId      String
+  team        Team     @relation(fields: [teamId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  role        String   @default("member") // owner, admin, member
+  joinedAt    DateTime @default(now())
+  @@unique([teamId, userId])
+
+  @@index([teamId, userId], map: "team_member_team_user_idx")
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Int      // in cents
+  currency    String   @default("usd")
+  status      PaymentStatus
+  method      PaymentMethod
+  stripeId    String?  // Stripe payment intent/charge ID
+  fawryId     String?  // Fawry transaction ID
+  paymobId    String?  // Paymob transaction ID
+  dodoId      String?  // Dodo transaction ID
+  invoiceId   String?
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId], map: "payment_user_id_idx")
+  @@index([status], map: "payment_status_idx")
+}
+
+model Invoice {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Int      // in cents
+  currency    String   @default("usd")
+  status      InvoiceStatus
+  dueDate     DateTime?
+  paidAt      DateTime?
+  number      String   @unique // Invoice number
+  payments    Payment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId], map: "invoice_user_id_idx")
+  @@index([status], map: "invoice_status_idx")
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String   // stripe, fawry, paymob, dodo
+  eventType   WebhookEventType
+  providerId  String   // The ID from the provider
+  data        Json     // The raw payload
+  processed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([provider, eventType], map: "webhook_event_provider_type_idx")
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  type        ActivityLogType
+  description String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, type], map: "activity_log_user_type_idx")
 }

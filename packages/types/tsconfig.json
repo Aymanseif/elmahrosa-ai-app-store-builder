@@ -1,1 +1,19 @@
-{\n  "compilerOptions": {\n    "target": "es5",\n    "module": "commonjs",\n    "declaration": true,\n    "outDir": "./dist",\n    "strict": true,\n    "esModuleInterop": true\n  }\n}
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "declaration": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
