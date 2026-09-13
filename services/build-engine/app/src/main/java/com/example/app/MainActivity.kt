@@ -5,13 +5,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,7 +56,7 @@ fun TodoApp() {
                 Button(
                     onClick = {
                         if (newTodoText.isNotBlank()) {
-                            todos = todos + TodoItem(newTodoText.trim())
+                            todos = todos + TodoItem(text = newTodoText.trim())
                             newTodoText = ""
                         }
                     },
@@ -68,9 +70,7 @@ fun TodoApp() {
 
             // Todo list
             Text(
-                text = "Your Todos (${
-                    todos.size
-                })",
+                text = "Your Todos (${todos.size})",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.align(alignment = Alignment.Start)
             )
@@ -89,7 +89,7 @@ fun TodoApp() {
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(todos) { todo ->
+                    items(todos, key = { it.id }) { todo ->
                         TodoItemRow(
                             todo = todo,
                             onDelete = { todos = todos.filterNot { it.id == todo.id } },
@@ -109,7 +109,7 @@ fun TodoApp() {
 data class TodoItem(
     val id: Long = System.currentTimeMillis(),
     val text: String,
-    var completed: Boolean = false
+    val completed: Boolean = false
 )
 
 @Composable
@@ -129,16 +129,13 @@ fun TodoItemRow(
             onCheckedChange = { onToggle() },
             modifier = Modifier.padding(end = 12.dp)
         )
-        Column {
-            Text(
-                text = todo.text,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier
-                    .width(200.dp)
-                    .wrapContentWidth()
-                    .strikethrough(todo.completed)
-            )
-        }
+        Text(
+            text = todo.text,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                textDecoration = if (todo.completed) TextDecoration.LineThrough else TextDecoration.None
+            ),
+            modifier = Modifier.width(200.dp)
+        )
         Spacer(modifier = Modifier.weight(1f))
         Button(
             onClick = onDelete,
@@ -151,4 +148,3 @@ fun TodoItemRow(
         }
     }
 }
-

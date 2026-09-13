@@ -2,43 +2,66 @@ name: CD
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-      
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-      
+
+      # FIX: the original loop assumed every service lived under ./services/<name>
+      # and built api-core, ai-generator, build-engine, web-app, sharing-hub all
+      # from that one path pattern. web-app and sharing-hub actually live under
+      # ./apps/, and none of them previously had a Dockerfile except
+      # build-engine — so this step failed on the very first run. Each entry
+      # below now maps explicitly to its real path, and only services that
+      # ship a Dockerfile are included. build-engine is a build pipeline, not
+      # a long-running service, so it is deployed as an artifact elsewhere,
+      # not pushed to ECS here.
       - name: Build, tag, and push Docker images
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: elmahrosa
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # Build and push all services
-          for service in api-core ai-generator build-engine web-app sharing-hub; do
-            docker build -t $ECR_REGISTRY/$ECR_REPOSITORY-$service:$IMAGE_TAG ./services/$service
-            docker push $ECR_REGISTRY/$ECR_REPOSITORY-$service:$IMAGE_TAG
+          set -euo pipefail
+          declare -A SERVICE_PATHS=(
+            [api-core]=services/api-core
+            [ai-generator]=services/ai-generator
+            [web-app]=apps/web-app
+          )
+          for service in "${!SERVICE_PATHS[@]}"; do
+            path="${SERVICE_PATHS[$service]}"
+            if [ ! -f "$path/Dockerfile" ]; then
+              echo "::warning::Skipping $service — no Dockerfile at $path"
+              continue
+            fi
+            docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY-$service:$IMAGE_TAG" "$path"
+            docker push "$ECR_REGISTRY/$ECR_REPOSITORY-$service:$IMAGE_TAG"
           done
-      
-      - name: Deploy to ECS
-        run: |
-          # Update ECS services with new image tags
-          aws ecs update-service --cluster elmahrosa-cluster --service api-core-service --image ${{ steps.login-ecr.outputs.registry }}/elmahrosa-api-core:${{ github.sha }}
-          aws ecs update-service --cluster elmahrosa-cluster --service ai-generator-service --image ${{ steps.login-ecr.outputs.registry }}/elmahrosa-ai-generator:${{ github.sha }}
-          aws ecs update-service --cluster elmahrosa-cluster --service build-engine-service --image ${{ steps.login-ecr.outputs.registry }}/elmahrosa-build-engine:${{ github.sha }}
-          # For frontend services, we might use a different approach (like Amplify or S3+CloudFront)
-          echo "Frontend deployment would happen here"
 
+      - name: Deploy to ECS
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          aws ecs update-service --cluster elmahrosa-cluster --service api-core-service \
+            --force-new-deployment
+          aws ecs update-service --cluster elmahrosa-cluster --service ai-generator-service \
+            --force-new-deployment
+          # web-app is typically served via Amplify/S3+CloudFront rather than
+          # ECS; wire that up here if/when it's deployed as a container instead.
+          echo "ECS services updated; web-app deployment handled separately."

@@ -4,25 +4,25 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 
 export default function ProjectDetail() {
-  const { signedIn } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
   const { id } = router.query
   const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Redirect to sign-in if not authenticated
-  if (!signedIn) {
-    router.push("/login")
-    return null
-  }
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.push("/login")
+    }
+  }, [isLoaded, isSignedIn, router])
 
   useEffect(() => {
+    if (!id) return
     // Simulate fetching project data
     setLoading(true)
     // In a real app, you would fetch from an API using the id
-    // For demo, we'll create a mock project based on id
     const mockProject = {
-      id: id || "1",
+      id,
       name: `Project ${id}`,
       description: 'This is a sample project description. In a real application, this data would come from your database.',
       createdAt: new Date().toISOString(),
@@ -35,11 +35,15 @@ export default function ProjectDetail() {
     setLoading(false)
   }, [id])
 
+  if (!isLoaded || !isSignedIn) {
+    return null
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto p-4">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          <div className="animate-spin rounded-full border-4 border-blue-500 border-t-transparent h-8 w-8"></div>
         </div>
       </div>
     )
@@ -56,18 +60,17 @@ export default function ProjectDetail() {
   const handleStartGeneration = () => {
     // In a real app, this would trigger a generation process
     alert('Generation started! (This is a demo)')
-    // Optionally redirect to a generation status page
-    // router.push(`/generation/${project.id}`)
   }
 
   return (
     <div className="container mx-auto p-4">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">{project.name}</h1>
-        <Link href={`/projects/${project.id}/edit`}>
-          <a className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white text-sm">
-            Edit
-          </a>
+        <Link
+          href={`/project/${project.id}/edit`}
+          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white text-sm"
+        >
+          Edit
         </Link>
       </div>
 

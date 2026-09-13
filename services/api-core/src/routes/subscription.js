@@ -27,28 +27,42 @@ router.post(
     // Handle the event
     const data = event.data.object;
 
-    switch (event.type) {
-      case "customer.subscription.created":
-      case "customer.subscription.updated":
-      case "customer.subscription.deleted":
-        await subscriptionController.applyWebhookEvent(
-          data.id,
-          data.status ||
-            (event.type === "customer.subscription.deleted" ? "canceled" : undefined),
-          data.current_period_end
-        );
-        break;
-      case "invoice.payment_succeeded":
-      case "invoice.payment_failed":
-        if (typeof data.subscription === "string") {
+    try {
+      switch (event.type) {
+        case "customer.subscription.created":
+        case "customer.subscription.updated":
+        case "customer.subscription.deleted":
           await subscriptionController.applyWebhookEvent(
-            data.subscription,
-            data.subscription_status
+            data.id,
+            data.status ||
+              (event.type === "customer.subscription.deleted" ? "canceled" : undefined),
+            data.current_period_end
           );
-        }
-        break;
-      default:
-        console.log(`Unhandled event type ${event.type}`);
+          break;
+        case "invoice.payment_succeeded":
+        case "invoice.payment_failed":
+          // FIX: the Stripe Invoice object (`data` here) has no
+          // `subscription_status` field — that was always undefined, so the
+          // subscription record never got updated after a payment event.
+          // The subscription's actual current status has to be fetched
+          // separately.
+          if (typeof data.subscription === "string") {
+            const sub = await stripe.subscriptions.retrieve(data.subscription);
+            await subscriptionController.applyWebhookEvent(
+              sub.id,
+              sub.status,
+              sub.current_period_end
+            );
+          }
+          break;
+        default:
+          console.log(`Unhandled event type ${event.type}`);
+      }
+    } catch (err) {
+      console.error(`Error processing webhook event ${event.type}:`, err);
+      // Stripe will retry on non-2xx; that's desirable here since the
+      // failure is on our side, not a bad payload.
+      return res.status(500).json({ error: "Webhook processing failed" });
     }
 
     // Return a response to Stripe to acknowledge receipt of the event

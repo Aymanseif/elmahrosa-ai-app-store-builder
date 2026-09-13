@@ -1,14 +1,18 @@
-import { useAuth } from "@clerk/nextjs"
+import { useAuth, SignIn } from "@clerk/nextjs"
 import { useRouter } from "next/router"
-import { SignIn } from "@clerk/nextjs"
+import { useEffect } from "react"
 
 export default function Login() {
-  const { signedIn } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
 
-  // Redirect to dashboard if already signed in
-  if (signedIn) {
-    router.push("/dashboard")
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.push("/dashboard")
+    }
+  }, [isLoaded, isSignedIn, router])
+
+  if (!isLoaded || isSignedIn) {
     return null
   }
 

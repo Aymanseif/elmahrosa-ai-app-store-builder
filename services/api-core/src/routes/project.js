@@ -24,14 +24,18 @@ router.post("/", async (req, res) => {
     const { name, description } = req.body;
     const userId = req.dbUser.id;
 
-    // Get the user's subscription to determine the plan
+    // Get the user's subscription to determine the plan.
+    // FIX: SubscriptionStatus is stored uppercase in the DB (see schema.prisma
+    // enum SubscriptionStatus { ACTIVE, CANCELED, ... }) via subscriptionController's
+    // STATUS_MAP. Querying for lowercase "active" here never matched anything,
+    // so every paying user silently fell back to the free-tier project limit.
     const subscription = await prisma.subscription.findFirst({
-      where: { userId, status: "active" },
+      where: { userId, status: "ACTIVE" },
       orderBy: { createdAt: "desc" },
     });
 
-    // Determine the plan; default to free if no active subscription
-    // (DB stores the plan as an uppercase enum, e.g. "PRO")
+    // Determine the plan; default to free if no active subscription.
+    // (DB stores the plan as an uppercase enum, e.g. "PRO".)
     const plan = (subscription ? subscription.plan : "free").toLowerCase();
     if (!["free", "pro", "enterprise"].includes(plan)) {
       return res.status(403).json({ error: "Unknown subscription plan" });

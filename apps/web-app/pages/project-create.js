@@ -1,10 +1,10 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/router"
 import { useAuth } from "@clerk/nextjs"
 import { WIZARD_STEPS } from '../lib/project-wizard-steps'
 
 export default function ProjectCreate() {
-  const { signedIn } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
   const [stepIndex, setStepIndex] = useState(0)
   const [formData, setFormData] = useState({
@@ -17,8 +17,13 @@ export default function ProjectCreate() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  if (!signedIn) {
-    router.push("/login")
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.push("/login")
+    }
+  }, [isLoaded, isSignedIn, router])
+
+  if (!isLoaded || !isSignedIn) {
     return null
   }
 
@@ -38,6 +43,14 @@ export default function ProjectCreate() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // Only the final step should actually submit; earlier "Next" buttons
+    // just advance the wizard. (Original code submitted on every step.)
+    if (stepIndex < WIZARD_STEPS.length - 1) {
+      handleNext()
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
@@ -88,6 +101,12 @@ export default function ProjectCreate() {
       <div className="bg-white rounded-lg shadow-md p-6 dark:bg-gray-800">
         <h2 className="text-xl font-bold mb-4">{currentStep.title}</h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">{currentStep.description}</p>
+
+        {error && (
+          <div className="mb-4 text-sm text-red-600" role="alert">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {currentStep.fields.map((field) => (
@@ -176,7 +195,7 @@ export default function ProjectCreate() {
                 disabled={loading}
                 className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-blue-400 hover:bg-blue-600"
               >
-                {loading ? "Creating..." : "Next Step"}
+                Next Step
               </button>
             </div>
           )}
@@ -195,5 +214,5 @@ export default function ProjectCreate() {
         </form>
       </div>
     </div>
-  );
+  )
 }

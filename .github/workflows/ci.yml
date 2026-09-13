@@ -6,8 +6,15 @@ on:
   pull_request:
     branches: [ master, develop ]
 
+# FIX: almost every step below previously had `continue-on-error: true` or a
+# trailing `|| true`, which means CI reported green regardless of whether
+# lint/tests/audit actually passed. That defeats the purpose of having CI at
+# all. This version lets failures fail the job. If some checks genuinely
+# aren't ready yet (e.g. no tests written for a service), scope the
+# exception to that specific step with a comment explaining why, rather than
+# blanket-suppressing everything.
+
 jobs:
-  # Linting job
   lint:
     runs-on: ubuntu-latest
     strategy:
@@ -15,25 +22,22 @@ jobs:
         service: [web-app, api-core, sharing-hub]
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'pnpm'
-      
+
       - name: Install dependencies
         run: pnpm install --filter=${{ matrix.service }}
-      
-      - name: Run ESLint
-        run: pnpm run lint --filter=${{ matrix.service }} || true
-        continue-on-error: true  # Allow failures for now as we implement
-      
-      - name: Run Prettier
-        run: pnpm run format:check --filter=${{ matrix.service }} || true
-        continue-on-error: true
 
-  # Testing job
+      - name: Run ESLint
+        run: pnpm run lint --filter=${{ matrix.service }}
+
+      - name: Run Prettier
+        run: pnpm run format:check --filter=${{ matrix.service }}
+
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -41,71 +45,65 @@ jobs:
         service: [api-core, web-app, sharing-hub, ai-generator]
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'pnpm'
-      
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
           cache: 'pip'
-      
+
       - name: Install dependencies
         run: |
+          set -e
           pnpm install
-          # Install Python dependencies for ai-generator
           if [ "${{ matrix.service }}" = "ai-generator" ]; then
-            cd services/ai-generator && pip install -r requirements.txt || true
+            cd services/ai-generator && pip install -r requirements.txt
           fi
-      
+
       - name: Run tests
         run: |
+          set -e
           if [ "${{ matrix.service }}" = "ai-generator" ]; then
-            # Run Python tests
-            cd services/ai-generator && python -m pytest || true
+            cd services/ai-generator && python -m pytest
           else
-            # Run JS/TS tests
-            pnpm test --filter=${{ matrix.service }} || true
+            pnpm test --filter=${{ matrix.service }}
           fi
-        continue-on-error: true
 
-  # Security scanning job
   security:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Run Snyk security scan
         uses: snyk/actions@v2
-        continue-on-error: true
         with:
           command: test
           args: --severity-threshold=high
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      
+
       - name: Run npm audit
         if: always()
         run: |
-          # Run npm audit for JS/TS services
+          set -e
           for dir in apps/* services/* packages/*; do
             if [ -f "$dir/package.json" ]; then
               echo "Checking $dir"
-              cd "$dir" && npm audit --audit-level=high || true
+              (cd "$dir" && npm audit --audit-level=high)
             fi
           done
-        continue-on-error: true
 
-  # Dependency check job
   dependabot:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Dependency Review
         uses: actions/dependency-review-action@v3
         with:
