@@ -22,6 +22,11 @@ const createSubscription = async (req, res) => {
     const userId = req.dbUser.id;
     const { priceId, plan = "pro" } = req.body; // Expecting a Stripe price ID
 
+    // Input validation
+    if (typeof priceId !== "string" || !/^price_[A-Za-z0-9]+$/.test(priceId)) {
+      return res.status(400).json({ error: "priceId is required and must be a Stripe price ID" });
+    }
+
     const planEnum = PLAN_MAP[String(plan).toLowerCase()];
     if (!planEnum) {
       return res.status(400).json({ error: "Invalid plan" });
@@ -76,7 +81,7 @@ const createSubscription = async (req, res) => {
     res.status(201).json(subscription);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -95,15 +100,27 @@ const getSubscription = async (req, res) => {
 
     res.json(subscription);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
-// Update subscription (user-initiated; e.g. cancel or change status)
+// Update subscription (user-initiated).
+// SECURITY: only cancellation is allowed from the client. If users could set
+// an arbitrary status (e.g. "ACTIVE") they would self-upgrade and bypass the
+// plan-limit checks in project.js without ever paying. Every other status
+// transition comes from Stripe via the webhook handler.
 const updateSubscription = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, currentPeriodEnd } = req.body;
+    const { status } = req.body || {};
+
+    if (status && String(status).toLowerCase() !== "canceled") {
+      return res.status(400).json({
+        error:
+          "Only cancellation is supported; subscription status changes are applied from Stripe webhooks",
+      });
+    }
 
     const subscription = await prisma.subscription.findUnique({ where: { id } });
 
@@ -119,16 +136,14 @@ const updateSubscription = async (req, res) => {
     const updated = await prisma.subscription.update({
       where: { id },
       data: {
-        status: STATUS_MAP[String(status).toLowerCase()] || subscription.status,
-        currentPeriodEnd: currentPeriodEnd
-          ? new Date(currentPeriodEnd)
-          : subscription.currentPeriodEnd,
+        status: "CANCELED",
       },
     });
 
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 

@@ -14,7 +14,8 @@ router.get("/user/:userId", async (req, res) => {
     const projects = await prisma.project.findMany({ where: { userId } });
     res.json(projects);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -23,6 +24,14 @@ router.post("/", async (req, res) => {
   try {
     const { name, description } = req.body;
     const userId = req.dbUser.id;
+
+    // Input validation
+    if (typeof name !== "string" || name.trim().length === 0 || name.length > 100) {
+      return res.status(400).json({ error: "name is required (1-100 characters)" });
+    }
+    if (description !== undefined && (typeof description !== "string" || description.length > 500)) {
+      return res.status(400).json({ error: "description must be a string of at most 500 characters" });
+    }
 
     // Get the user's subscription to determine the plan.
     // FIX: SubscriptionStatus is stored uppercase in the DB (see schema.prisma
@@ -65,7 +74,8 @@ router.post("/", async (req, res) => {
 
     res.status(201).json(project);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -87,7 +97,8 @@ router.get("/:id", async (req, res) => {
 
     res.json(project);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -115,7 +126,8 @@ router.put("/:id", async (req, res) => {
 
     res.json(project);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -139,7 +151,8 @@ router.delete("/:id", async (req, res) => {
 
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

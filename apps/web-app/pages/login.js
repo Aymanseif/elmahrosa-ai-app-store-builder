@@ -18,3 +18,9 @@ export default function Login() {
 
   return <SignIn />
 }
+// Server-rendered at request time instead of statically prerendered at
+// build time: these pages use Clerk auth, which requires a publishable key
+// that is not available during builds without configuration.
+export async function getServerSideProps() {
+  return { props: {} }
+}

@@ -28,7 +28,8 @@ const createBuild = async (req, res) => {
 
     res.status(201).json(build);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -58,7 +59,8 @@ const getBuilds = async (req, res) => {
 
     res.json(builds);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -83,7 +85,8 @@ const getBuildById = async (req, res) => {
 
     res.json(build);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -134,7 +137,8 @@ const updateBuild = async (req, res) => {
 
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 

@@ -39,7 +39,8 @@ const createAudit = async (req, res) => {
 
     res.status(201).json(audit);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -69,7 +70,8 @@ const getAudits = async (req, res) => {
 
     res.json(audits);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -94,7 +96,8 @@ const getAuditById = async (req, res) => {
 
     res.json(audit);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 

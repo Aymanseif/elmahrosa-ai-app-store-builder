@@ -10,9 +10,11 @@ This document outlines the release process for Elmahrosa AI App Store Builder.
 
 ## Release Cycle
 1. Development happens in feature branches
-2. Features are merged to `develop` branch via pull requests
-3. Release candidates are created from `develop`
-4. Final releases are tagged and merged to `main`
+2. Features are merged to `master` (the default branch) via pull requests
+3. Release candidates are created from `master`
+4. Final releases are tagged on `master`
+5. `develop` may be reintroduced as an integration branch once the team grows;
+   until then master-only keeps the flow honest with the branch that exists
 
 ## Pre-Release Checklist
 ### Code Quality
@@ -37,9 +39,9 @@ This document outlines the release process for Elmahrosa AI App Store Builder.
 
 ### 1. Prepare Release Branch
 ```bash
-git checkout develop
-git pull origin develop
-git checkout -b release/v1.2.3
+git checkout master
+git pull origin master
+git checkout -b release/v0.1.1
 ```
 
 ### 2. Update Version Numbers
@@ -50,15 +52,15 @@ Update version in:
 
 ### 3. Run Tests
 ```bash
-pnpm test
+pnpm install && pnpm test
 # Ensure all tests pass
 ```
 
 ### 4. Create Release Candidate
 ```bash
-git commit -am "chore: prepare release v1.2.3"
-git tag -a v1.2.3 -m "Release v1.2.3"
-git push origin release/v1.2.3 --tags
+git commit -am "chore: prepare release v0.1.1"
+git tag -a v0.1.1 -m "Release v0.1.1"
+git push origin release/v0.1.1 --tags
 ```
 
 ### 5. Deploy to Staging
@@ -68,10 +70,10 @@ git push origin release/v1.2.3 --tags
 
 ### 6. Release to Production
 ```bash
-git checkout main
-git pull origin main
-git merge --no-ff release/v1.2.3
-git push origin main
+git checkout master
+git pull origin master
+git merge --no-ff release/v0.1.1
+git push origin master
 git push origin --tags
 ```
 
@@ -85,17 +87,15 @@ git push origin --tags
 For critical issues in production:
 
 ```bash
-# From main branch
-git checkout -b hotfix/v1.2.4
+# From master branch
+git checkout -b hotfix/v0.1.2
 # Fix the issue
 git commit -am "fix: critical issue description"
-git checkout main
-git merge --no-ff hotfix/v1.2.4
-git checkout develop
-git merge --no-ff hotfix/v1.2.4
-git tag -a v1.2.4 -m "Hotfix v1.2.4"
-git push origin main develop --tags
-git branch -d hotfix/v1.2.4
+git checkout master
+git merge --no-ff hotfix/v0.1.2
+git tag -a v0.1.2 -m "Hotfix v0.1.2"
+git push origin master --tags
+git branch -d hotfix/v0.1.2
 ```
 
 ## Automation

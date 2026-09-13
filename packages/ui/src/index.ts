@@ -1,5 +1,4 @@
 // Shared UI components for Elmahrosa
-// Placeholder for future component exports
+// Placeholder package: add shared components here and export them below.
 
-export * from './components';
-// For now, we can export a simple component or keep empty
+export {};

@@ -6,8 +6,8 @@ We provide security updates for the following versions:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+| 0.1.x   | :white_check_mark: |
+| < 0.1   | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -33,35 +33,42 @@ We take the security of our project seriously. If you discover a security vulner
 4. **Release**: We will release a patch in a timely manner
 5. **Credit**: We will publicly credit you for the discovery (if desired)
 
-## Security Best Practices We Follow
+## Security Best Practices
+
+Honest status of each practice — claims below are marked either **in place**
+or **planned** so this document reflects reality rather than aspiration.
 
 ### Code Security
-- All user input is validated and sanitized
-- We use parameterized queries to prevent SQL injection
-- Environment variables are used for secrets (never hardcoded)
-- Dependencies are regularly updated and scanned
-- Code reviews are performed on all changes
+- **Planned**: all user input is validated and sanitized (validation exists on
+  mutating API routes today; not yet systematic)
+- **In place**: Prisma parameterized queries (no string-built SQL)
+- **In place**: environment variables for secrets (never hardcoded)
+- **Planned**: regular dependency updates and scanning (Dependabot configured;
+  Snyk token not yet wired in CI)
+- **In place**: code reviews on all changes (CODEOWNERS + required reviews)
 
 ### Infrastructure Security
-- Services run with least privilege principles
-- Network segmentation between services
-- Regular security scanning of container images
-- Automated dependency updates via Dependabot
-- Security headers implemented in web services
+- **In place**: dedicated security group for data services, RDS in private
+  subnets with `publicly_accessible = false`
+- **Planned**: container image scanning
+- **In place**: automated dependency updates via Dependabot
+- **Planned**: security headers at the edge (the API sets `helmet` headers;
+  no CDN/WAF layer yet)
 
 ### Generated App Security
-- Generated apps use HTTPS only for network requests
-- No hardcoded secrets in generated code
-- Minimal permissions requested in AndroidManifest.xml
-- Input validation and sanitization in all user inputs
-- Secure storage practices for any local data
+- **Planned**: HTTPS-only enforcement in generated code
+- **In place**: no hardcoded secrets in generated code (template-based,
+  generated from static assets)
+- **In place**: minimal permissions requested in AndroidManifest.xml
+- **Planned**: input validation and sanitization in all generated apps
+- **Planned**: secure storage practices for any local data
 
 ### Data Protection
-- Personal data is encrypted at rest and in transit
-- We comply with GDPR and similar regulations
-- Regular backups with encryption
-- Data retention and deletion policies
-- Privacy by design principles
+- **Planned**: personal data encrypted at rest (RDS encryption not yet enabled)
+- **Planned**: GDPR compliance assessment
+- **Planned**: regular encrypted backups
+- **Planned**: data retention and deletion policies
+- **Planned**: privacy by design principles
 
 ## Security Tools & Processes
 

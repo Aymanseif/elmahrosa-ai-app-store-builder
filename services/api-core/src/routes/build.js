@@ -7,7 +7,13 @@ const { authenticateToken } = require("../middleware/authMiddleware");
 router.use(authenticateToken);
 
 // Create a new build for a project
-router.post("/", buildController.createBuild);
+router.post("/", (req, res, next) => {
+  const { projectId } = req.body || {};
+  if (typeof projectId !== "string" || projectId.trim().length === 0) {
+    return res.status(400).json({ error: "projectId is required" });
+  }
+  next();
+}, buildController.createBuild);
 
 // Get builds for a project
 router.get("/project/:projectId", buildController.getBuilds);

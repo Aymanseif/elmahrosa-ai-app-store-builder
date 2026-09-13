@@ -161,7 +161,7 @@ model Subscription {
   user        User     @relation(fields: [userId], references: [id])
   plan        SubscriptionPlan
   status      SubscriptionStatus
-  stripeId    String?
+  stripeId    String?  @unique
   currentPeriodEnd DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
