@@ -40,3 +40,21 @@ variable "anthropic_api_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "certificate_arn" {
+  description = "ARN of the ACM certificate for HTTPS. When set, an HTTPS listener is created and HTTP redirects to HTTPS; leave empty for HTTP-only (dev)."
+  type        = string
+  default     = ""
+}
+
+variable "domain_name" {
+  description = "Domain name for ACM certificate validation (optional, ignored when certificate_arn is set)"
+  type        = string
+  default     = ""
+}
+
+variable "hosted_zone_id" {
+  description = "Route53 hosted zone ID for DNS certificate validation (required when domain_name is set)"
+  type        = string
+  default     = ""
+}

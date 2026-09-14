@@ -28,7 +28,8 @@ jobs:
       #     declares a full web-app ECS service + repo + ALB route, but the
       #     deploy claimed web-app is handled separately and never pushed its
       #     image. build-engine is a build pipeline, not a long-running service,
-      #     so it is not in the matrix.
+      #     so it is not in the matrix. All Dockerfiles build from the repo root
+      #     so pnpm installs from the committed pnpm-lock.yaml.
       - name: Build, tag, and push Docker images
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -36,18 +37,18 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           set -euo pipefail
-          declare -A SERVICE_PATHS=(
-            [api-core]=services/api-core
-            [ai-generator]=services/ai-generator
-            [web-app]=apps/web-app
+          declare -A SERVICE_DOCKERFILES=(
+            [api-core]=services/api-core/Dockerfile
+            [ai-generator]=services/ai-generator/Dockerfile
+            [web-app]=apps/web-app/Dockerfile
           )
-          for service in "${!SERVICE_PATHS[@]}"; do
-            path="${SERVICE_PATHS[$service]}"
-            if [ ! -f "$path/Dockerfile" ]; then
-              echo "::warning::Skipping $service — no Dockerfile at $path"
+          for service in "${!SERVICE_DOCKERFILES[@]}"; do
+            dockerfile="${SERVICE_DOCKERFILES[$service]}"
+            if [ ! -f "$dockerfile" ]; then
+              echo "::warning::Skipping $service — no Dockerfile at $dockerfile"
               continue
             fi
-            docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY/$service:$IMAGE_TAG" "$path"
+            docker build -f "$dockerfile" -t "$ECR_REGISTRY/$ECR_REPOSITORY/$service:$IMAGE_TAG" .
             docker push "$ECR_REGISTRY/$ECR_REPOSITORY/$service:$IMAGE_TAG"
           done
 

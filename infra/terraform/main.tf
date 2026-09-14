@@ -6,6 +6,17 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  # Shared remote state so CI/CD and any dev machine operate on the same
+  # infrastructure instead of independently drifting. The bucket must already
+  # exist (create it once manually or via CI bootstrap); encrypt + versioning
+  # are expected on it. Datum state stays local otherwise.
+  backend "s3" {
+    bucket  = "elmahrosa-terraform-state"
+    key     = "elmahrosa-ai-app-store-builder/terraform.tfstate"
+    region  = "us-east-1"
+    encrypt = true
+  }
 }
 
 provider "aws" {

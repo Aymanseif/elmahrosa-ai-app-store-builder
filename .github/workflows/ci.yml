@@ -33,7 +33,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -63,7 +63,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -99,16 +99,20 @@ jobs:
       matrix:
         include:
           - service: api-core
-            path: services/api-core
+            dockerfile: services/api-core/Dockerfile
           - service: ai-generator
-            path: services/ai-generator
+            dockerfile: services/ai-generator/Dockerfile
           - service: web-app
-            path: apps/web-app
+            dockerfile: apps/web-app/Dockerfile
     steps:
       - uses: actions/checkout@v4
 
+      # All service Dockerfiles build from the repo root so pnpm can install
+      # from the committed pnpm-lock.yaml (--frozen-lockfile). This matches the
+      # exact contexts cd.yml uses, so a Dockerfile that breaks cannot be
+      # merged silently and only fail on the deploy job.
       - name: Build ${{ matrix.service }} image
-        run: docker build -t elmahrosa-${{ matrix.service }}:ci "${{ matrix.path }}"
+        run: docker build -f "${{ matrix.dockerfile }}" -t elmahrosa-${{ matrix.service }}:ci .
 
   security:
     runs-on: ubuntu-latest
@@ -123,7 +127,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'pnpm'
 
       - name: Run Snyk security scan
@@ -146,6 +150,10 @@ jobs:
         run: pnpm audit --audit-level=high
 
   dependabot:
+    # dependency-review-action only works in a pull_request/pull_request_target
+    # context; it errors on push events with "'base-ref'/'head-ref' required".
+    # Restrict to PRs so a clean push to master cannot fail this job.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -154,4 +162,4 @@ jobs:
         uses: actions/dependency-review-action@v3
         with:
           fail-on-severity: moderate
-          allow-ghas-advisories-in-pr: true
+          allow-ghsas: true

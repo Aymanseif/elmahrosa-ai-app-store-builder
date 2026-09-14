@@ -1,0 +1,15 @@
+node_modules
+.git
+.next
+out
+build
+dist
+.env
+.env.*
+!.env.example
+*.log
+__pycache__
+*.pyc
+.pytest_cache
+.venv
+infra/terraform/.terraform

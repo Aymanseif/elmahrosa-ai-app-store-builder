@@ -5,8 +5,8 @@
 # group on container ports only (see the services SG in main.tf).
 
 resource "aws_ecr_repository" "web_app" {
-  name          = "${var.project_name}/web-app"
-  force_destroy = true
+  name         = "${var.project_name}/web-app"
+  force_delete = true
   tags = {
     Name        = "${var.project_name}/web-app"
     Environment = var.environment
@@ -14,8 +14,8 @@ resource "aws_ecr_repository" "web_app" {
 }
 
 resource "aws_ecr_repository" "api_core" {
-  name          = "${var.project_name}/api-core"
-  force_destroy = true
+  name         = "${var.project_name}/api-core"
+  force_delete = true
   tags = {
     Name        = "${var.project_name}/api-core"
     Environment = var.environment
@@ -23,8 +23,8 @@ resource "aws_ecr_repository" "api_core" {
 }
 
 resource "aws_ecr_repository" "ai_generator" {
-  name          = "${var.project_name}/ai-generator"
-  force_destroy = true
+  name         = "${var.project_name}/ai-generator"
+  force_delete = true
   tags = {
     Name        = "${var.project_name}/ai-generator"
     Environment = var.environment
@@ -237,6 +237,45 @@ resource "aws_ecs_task_definition" "ai_generator" {
   }
 }
 
+# ---------- ACM ----------
+# When a domain_name is supplied but no certificate_arn, request and validate a
+# cert via DNS so the HTTPS listener below has a certificate to attach. Skip
+# both when an existing certificate_arn is given.
+resource "aws_acm_certificate" "main" {
+  count = var.certificate_arn == "" && var.domain_name != "" ? 1 : 0
+
+  domain_name               = var.domain_name
+  validation_method         = "DNS"
+  subject_alternative_names = ["*.${var.domain_name}"]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name        = "${var.project_name}-cert"
+    Environment = var.environment
+  }
+}
+
+resource "aws_route53_record" "cert_validation" {
+  count = var.certificate_arn == "" && var.domain_name != "" ? 1 : 0
+
+  allow_overwrite = true
+  name            = tolist(aws_acm_certificate.main[0].domain_validation_options)[0].resource_record_name
+  records         = [tolist(aws_acm_certificate.main[0].domain_validation_options)[0].resource_record_value]
+  type            = tolist(aws_acm_certificate.main[0].domain_validation_options)[0].resource_record_type
+  zone_id         = var.hosted_zone_id
+  ttl             = 60
+}
+
+resource "aws_acm_certificate_validation" "main" {
+  count = var.certificate_arn == "" && var.domain_name != "" ? 1 : 0
+
+  certificate_arn         = aws_acm_certificate.main[0].arn
+  validation_record_fqdns = [aws_route53_record.cert_validation[0].fqdn]
+}
+
 # ---------- ALB ----------
 
 resource "aws_security_group" "alb" {
@@ -329,12 +368,50 @@ resource "aws_lb_target_group" "api_core" {
   }
 }
 
-# HTTP-only for now: no ACM certificate is provisioned in this scaffold. Add
-# an HTTPS listener with a cert and a redirect from :80 before production.
+# HTTPS support: an HTTP->HTTPS redirect listener plus an HTTPS listener that
+# forwards to the web-app target group. HTTPS is enabled when either a ready
+# ACM certificate ARN is supplied (certificate_arn) or a domain_name is given
+# (in which case a cert is requested and DNS-validated above). When HTTPS is
+# off, the HTTP listener forwards directly so the scaffold still works in dev.
+locals {
+  use_https = var.certificate_arn != "" || var.domain_name != ""
+  cert_arn  = var.certificate_arn != "" ? var.certificate_arn : try(aws_acm_certificate_validation.main[0].certificate_arn, "")
+}
+
+# HTTP listener: forwards when HTTPS is off (dev), redirects to HTTPS when on.
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
   protocol          = "HTTP"
+
+  dynamic "default_action" {
+    for_each = local.use_https ? [1] : []
+    content {
+      type = "redirect"
+      redirect {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+  }
+
+  dynamic "default_action" {
+    for_each = local.use_https ? [] : [1]
+    content {
+      type             = "forward"
+      target_group_arn = aws_lb_target_group.web_app.arn
+    }
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  count             = local.use_https ? 1 : 0
+  load_balancer_arn = aws_lb.main.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = local.cert_arn
 
   default_action {
     type             = "forward"
@@ -343,7 +420,7 @@ resource "aws_lb_listener" "http" {
 }
 
 resource "aws_lb_listener_rule" "api" {
-  listener_arn = aws_lb_listener.http.arn
+  listener_arn = local.use_https ? aws_lb_listener.https[0].arn : aws_lb_listener.http.arn
   priority     = 10
 
   action {
