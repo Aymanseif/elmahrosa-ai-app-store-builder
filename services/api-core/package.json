@@ -17,7 +17,7 @@
     "bullmq": "^1.0.0",
     "jsonwebtoken": "^9.0.0",
     "jwks-rsa": "^3.0.0",
-    "stripe": "^14.0.0",
+    "stripe": "^22.6.2",
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.2.0",
     "zod": "^3.23.8",
