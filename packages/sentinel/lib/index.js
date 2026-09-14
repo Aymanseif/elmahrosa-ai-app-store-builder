@@ -35,7 +35,8 @@ const RULES = [
     id: "SEC-004",
     severity: "high",
     message: "Plaintext (HTTP) endpoint over network",
-    pattern: /"http:\/\/(?!localhost|127\.0\.0\.1)[^"]+"/g,
+    // XML namespace URIs (schemas.android.com) are identifiers, not endpoints.
+    pattern: /"http:\/\/(?!localhost|127\.0\.0\.1|schemas\.android\.com)[^"]+"/g,
   },
   {
     id: "SEC-005",

@@ -21,15 +21,14 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # FIX: the original loop assumed every service lived under ./services/<name>
-      # and built api-core, ai-generator, build-engine, web-app, sharing-hub all
-      # from that one path pattern. web-app and sharing-hub actually live under
-      # ./apps/, and none of them previously had a Dockerfile except
-      # build-engine — so this step failed on the very first run. Each entry
-      # below now maps explicitly to its real path, and only services that
-      # ship a Dockerfile are included. build-engine is a build pipeline, not
-      # a long-running service, so it is deployed as an artifact elsewhere,
-      # not pushed to ECS here.
+      # FIX: three name mismatches with infra/terraform made every deploy fail:
+      # (1) ECR repos are elmahrosa/<service> (slash) but we pushed to
+      #     elmahrosa-<service>; (2) ECS services are elmahrosa-<service> but we
+      #     updated api-core-service / ai-generator-service; (3) Terraform
+      #     declares a full web-app ECS service + repo + ALB route, but the
+      #     deploy claimed web-app is handled separately and never pushed its
+      #     image. build-engine is a build pipeline, not a long-running service,
+      #     so it is not in the matrix.
       - name: Build, tag, and push Docker images
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -48,20 +47,88 @@ jobs:
               echo "::warning::Skipping $service — no Dockerfile at $path"
               continue
             fi
-            docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY-$service:$IMAGE_TAG" "$path"
-            docker push "$ECR_REGISTRY/$ECR_REPOSITORY-$service:$IMAGE_TAG"
+            docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY/$service:$IMAGE_TAG" "$path"
+            docker push "$ECR_REGISTRY/$ECR_REPOSITORY/$service:$IMAGE_TAG"
           done
 
+      # Task definitions are declared in Terraform with `image = "…:${var.image_tag}"`,
+      # baked in at apply time — so a bare `--force-new-deployment` would roll out
+      # the image tag from the last apply, not the commit just pushed. To deploy
+      # the new image we re-register each family with the image URI rewritten to
+      # the pushed SHA, then update the service to that new revision.
       - name: Deploy to ECS
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+          ECR_REPOSITORY: elmahrosa
         run: |
           set -euo pipefail
-          aws ecs update-service --cluster elmahrosa-cluster --service api-core-service \
-            --force-new-deployment
-          aws ecs update-service --cluster elmahrosa-cluster --service ai-generator-service \
-            --force-new-deployment
-          # web-app is typically served via Amplify/S3+CloudFront rather than
-          # ECS; wire that up here if/when it's deployed as a container instead.
-          echo "ECS services updated; web-app deployment handled separately."
+          for svc in api-core ai-generator web-app; do
+            family="elmahrosa-$svc"
+            new_image="$ECR_REGISTRY/$ECR_REPOSITORY/$svc:$IMAGE_TAG"
+
+            # Rewrite every container's image to the pushed SHA, strip the
+            # read-only fields that register-task-definition rejects, and re-
+            # register the family. update-service then rolls the new revision.
+            newtask="$(aws ecs describe-task-definition --task-definition "$family" \
+              --query 'taskDefinition' --output json | jq -c \
+              'del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                   .compatibilities, .registeredAt, .registeredBy, .deregisteredAt)
+               | .containerDefinitions[0].image = $img' \
+              --arg img "$new_image")"
+
+            aws ecs register-task-definition --cli-input-json "$newtask" >/dev/null
+            echo "registered $family revision for $new_image"
+
+            aws ecs update-service --cluster elmahrosa-cluster --service "$family" \
+              --task-definition "$family" --force-new-deployment >/dev/null
+            echo "updated $family"
+          done
+
+      # Phase 2 post-deploy smoke gate: wait for each service to be stable, then
+      # probe reachable public endpoints with a bounded retry so a bad image
+      # fails the deploy instead of silently serving errors after rollout.
+      # ai-generator is an internal worker with no LB attachment — its
+      # healthcheck is covered by ecs wait services-stable below.
+      - name: Wait for ECS services to reach steady state
+        env:
+          ECS_CLUSTER: elmahrosa-cluster
+        run: |
+          set -euo pipefail
+          for svc in api-core ai-generator web-app; do
+            aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "elmahrosa-$svc"
+            echo "✅ elmahrosa-$svc stable"
+          done
+
+      - name: Smoke test public endpoints via the ALB
+        run: |
+          set -euo pipefail
+          # Resolve the ALB DNS from AWS so the probe works without storing a
+          # hardcoded hostname. Abort the gate only if a real ALB exists but
+          # never comes healthy; a missing ALB (first deploy) warns and passes.
+          ALB_DNS="$(aws elbv2 describe-load-balancers --query "LoadBalancers[?contains(LoadBalancerName, 'alb')].DNSName" --output text | awk '{print $1}')"
+          if [ -z "$ALB_DNS" ] || [ "$ALB_DNS" = "None" ]; then
+            echo "⚠ No ALB found — skipping HTTP smoke probe (first deploy?). ECS stabilisation already verified above."
+            exit 0
+          fi
+          # 30 tries x 10s = up to 5 minutes for rollout propagation.
+          probe() {
+            local url="$1"
+            local expect="$2"
+            for i in $(seq 1 30); do
+              code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$url" || true)"
+              if [ "$code" = "$expect" ]; then
+                echo "OK  $url -> $code"
+                return 0
+              fi
+              echo "waiting for $url (attempt $i, got $code)"
+              sleep 10
+            done
+            echo "FAIL $url never returned $expect after 30 attempts" >&2
+            return 1
+          }
+          # web-app is the default ALB route; api-core answers under /api (an
+          # unauthenticated /api/projects GET must 401, proving the service is
+          # routing — not a 5xx from a broken image).
+          probe "http://$ALB_DNS/" 200
+          probe "http://$ALB_DNS/api/projects" 401

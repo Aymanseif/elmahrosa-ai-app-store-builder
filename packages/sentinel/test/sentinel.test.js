@@ -24,6 +24,16 @@ test("shell exec is flagged", async () => {
   assert.ok(result.report.some((f) => f.rule === "SEC-003"));
 });
 
+test("XML namespace URIs are not flagged as HTTP endpoints", async () => {
+  const result = await audit('<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n');
+  assert.ok(!result.report.some((f) => f.rule === "SEC-004"));
+});
+
+test("plaintext HTTP endpoint outside localhost is flagged", async () => {
+  const result = await audit('fetch("http://api.example.com/data");\n');
+  assert.ok(result.report.some((f) => f.rule === "SEC-004"));
+});
+
 test("empty input throws", async () => {
   await assert.rejects(() => audit("   "), /non-empty/);
 });

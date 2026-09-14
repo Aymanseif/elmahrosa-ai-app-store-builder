@@ -90,6 +90,26 @@ jobs:
       - name: Run tests
         run: python -m pytest services/ai-generator
 
+  # Every service image that CD ships must be provably buildable in CI before
+  # a merge. This matches the exact contexts cd.yml uses so a Dockerfile that
+  # breaks cannot be merged silently and only fail on the deploy job.
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: api-core
+            path: services/api-core
+          - service: ai-generator
+            path: services/ai-generator
+          - service: web-app
+            path: apps/web-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.service }} image
+        run: docker build -t elmahrosa-${{ matrix.service }}:ci "${{ matrix.path }}"
+
   security:
     runs-on: ubuntu-latest
     steps:
