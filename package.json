@@ -1,1 +1,10 @@
-{"private":true}
+{
+  "private": true,
+  "pnpm": {
+    "overrides": {
+      "postcss": "^8.5.18",
+      "semver@>=7.0.0 <7.5.2": ">=7.5.2",
+      "qs@>=2.2.5 <6.16.0": ">=6.16.0"
+    }
+  }
+}
