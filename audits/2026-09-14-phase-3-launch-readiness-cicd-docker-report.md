@@ -1,7 +1,7 @@
 # Phase 3 — Launch Readiness: CI/CD Pipeline, Docker Reproducibility, Terraform
 
 **Order:** Final remediation order, 2026-09-13 (Elmahrosa AI App Store Builder)
-**Verified commits:** `master @ b0c6ae5` (fixes `3a571eb`, `5425e16`, `8779146`, `1505790`, `dd68f83`, `9631c34`, `8a8216d`, `d7a29e1`, `b0c6ae5`)
+**Verified commits:** `master @ 1905a44` (fixes `3a571eb`, `5425e16`, `8779146`, `1505790`, `dd68f83`, `9631c34`, `8a8216d`, `d7a29e1`, `b0c6ae5`, `1905a44`)
 **Verification date:** 2026-09-15
 **Machine:** Windows 11 (win32), git-bash, node v26.7.0
 **Tool versions:** pnpm v9.15.9, Terraform v1.9.8 (hashicorp/aws ~> 5.0), Python 3.12.10
@@ -61,8 +61,26 @@ ai-generator verified too: `GET /` → 200, `POST /generate` → 401 without/wro
 200 with the correct token. All three images build from the committed files and the fixed image
 (`elmahrosa-api-core:ci3` build cache) boots clean. Docker test containers cleaned up.
 
-**Updated final state:** `master @ b0c6ae5` (commits `dd68f83`, `9631c34`, `8a8216d`, `d7a29e1`,
-`b0c6ae5`), successful CI run `34945809247`, all 10 jobs ✓ + dependabot skipped.
+## Full-stack compose verification (2026-09-15)
+
+Brought up the real `infra/docker-compose.yml` stack (postgres:15, redis:7, api-core, ai-generator)
+with the committed Dockerfiles — the closest thing to the deployed ECS topology available locally:
+
+- All four containers reached **`(healthy)`** via their real healthchecks (postgres `pg_isready`,
+  api-core & ai-generator HTTP probes — the same signals ECS `services-stable` waits on).
+- api-core booted from a **fresh Postgres** in ~16s: `prisma migrate deploy` applied migrations,
+  then `/health` → 200.
+- Auth matrix over the compose network, api-core → ai-generator service-to-service (no host port,
+  exactly like production):
+  - `GET /api/projects` (no token) → **401** ✓ (CD smoke gate)
+  - `GET /` api-core → **200** ✓
+  - `GET /` ai-generator → **200** ✓
+  - `POST /generate` (no token) / (wrong token) → **401** ✓
+  - `POST /generate` (valid service token) → **200** ✓
+- Worked around compose's `version:` (obsolete) — no change needed.
+
+**Updated final state:** `master @ 1905a44` (commits `dd68f83`, `9631c34`, `8a8216d`, `d7a29e1`,
+`b0c6ae5`, `1905a44`), CI green, full local suite 32/32 tests + 11 pytest passing after all fixes.
 
 ## Discovery / motivation
 
