@@ -16,7 +16,7 @@
     "redis": "^4.0.0",
     "bullmq": "^1.0.0",
     "jsonwebtoken": "^9.0.0",
-    "jwks-rsa": "^3.0.0",
+    "jwks-rsa": "^4.1.0",
     "stripe": "^14.0.0",
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.2.0",
