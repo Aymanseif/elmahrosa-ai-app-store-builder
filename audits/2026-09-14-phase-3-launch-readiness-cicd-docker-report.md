@@ -154,11 +154,16 @@ $ pnpm/action-setup version:9 vs packageManager field → ERR_PNPM_BAD_PM_VERSIO
 
 ## What remains before first deploy (next actions)
 
-- Bootstrap the S3 state bucket and run `terraform apply` (with `certificate_arn` or `domain_name`
-  chosen), then trigger the CD workflow and confirm the ecs-wait + smoke gates.
-- Set the CD secrets the task definitions now require: `NEXT_PUBLIC_API_URL`,
-  `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (web-app build args),
-  `CLERK_ISSUER_URL` (api-core boot-required), plus `CLERK_AUDIENCE`, `ALLOWED_ORIGIN`,
-  `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `DATABASE_URL`, `ANTHROPIC_API_KEY`,
-  `SERVICE_TOKEN` — in the CD environment or AWS Secrets Manager per the task definitions.
-- Keep `db_skip_final_snapshot = false` in prod tfvars so RDS destroy preserves a final snapshot.
+**Everything else is done.** The only remaining gate is creating credentials from your accounts,
+then running one command: `./launch.sh`. It prompts for every value, sets GitHub secrets, writes
+terraform.tfvars (gitignored), creates the S3 state bucket, and runs `terraform apply`.
+
+The 5 GitHub secrets (CD reads these at deploy time):
+`NEXT_PUBLIC_API_URL` (bare origin, no `/api` suffix), `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
+`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
+
+The terraform.tfvars values (written to `infra/terraform/terraform.tfvars`, auto-generated
+if not provided): `db_password`, `clerk_issuer_url`, `allowed_origin`, `stripe_secret_key`,
+`stripe_webhook_secret`, `anthropic_api_key`, `service_token` (+ domain/cert settings for
+HTTPS). With HTTPS off (certificate_arn blank), the ALB serves HTTP on port 80 only — sufficient
+for a first smoke-test before attaching a custom domain.
