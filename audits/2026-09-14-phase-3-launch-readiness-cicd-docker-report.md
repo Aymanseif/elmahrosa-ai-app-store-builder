@@ -1,7 +1,7 @@
 # Phase 3 — Launch Readiness: CI/CD Pipeline, Docker Reproducibility, Terraform
 
 **Order:** Final remediation order, 2026-09-13 (Elmahrosa AI App Store Builder)
-**Verified commits:** `master @ 9631c34` (fixes `3a571eb`, `5425e16`, `8779146`, `1505790`, `dd68f83`, `9631c34`)
+**Verified commits:** `master @ b0c6ae5` (fixes `3a571eb`, `5425e16`, `8779146`, `1505790`, `dd68f83`, `9631c34`, `8a8216d`, `d7a29e1`, `b0c6ae5`)
 **Verification date:** 2026-09-15
 **Machine:** Windows 11 (win32), git-bash, node v26.7.0
 **Tool versions:** pnpm v9.15.9, Terraform v1.9.8 (hashicorp/aws ~> 5.0), Python 3.12.10
@@ -36,6 +36,33 @@ Auditing the exact code paths the task definitions feed surfaced two real launch
 
 **Final state:** `master @ 9631c34`, run `34936753136` — all 10 jobs ✓ (incl. docker-build web-app
 with the ARG path) + dependabot skipped; `terraform validate` still "Success!".
+
+## Runtime image verification (2026-09-15, Docker now available)
+
+CI builds do not execute images, so two **runtime-only** failures were invisible until all
+three images were run locally with Docker 29.7.2:
+
+1. **web-app container crashed on boot** (`MODULE_NOT_FOUND /app/server.js`). The pnpm monorepo
+   standalone output places the entrypoint at `apps/web-app/server.js` (with static/public resolved
+   relative to it); the runner stage expected `/app/server.js`. Fixed by replicating the workspace
+   tree (`COPY …/standalone ./` keeps the `apps/web-app/` prefix; `CMD ["node", "apps/web-app/server.js"]`).
+   Verified: `GET /` → 200, and the `NEXT_PUBLIC_API_URL` build arg is **inlined into the
+   `project/[id]`, `project-create`, `projects` page bundles** — exactly the pages that call
+   `lib/api.js`. A full deploy would previously have rolled out a container that exited immediately
+   (only the CD `wait services-stable` gate, which doesn't run until after first deploy, would have flagged it).
+2. **api-core boot fails at `prisma migrate deploy`**: `node:20-slim` has no `openssl`, Prisma
+   detects no libssl and falls back to `openssl-1.1.x`, then tries to **download a mismatched
+   migration engine from binaries.prisma.sh at container start** — which fails in the SG-locked
+   ECS network (socket hang up). Fixed by installing `openssl` in both Dockerfile stages (Prisma's
+   documented fix). Verified end-to-end against a Postgres 15 container: migrations applied,
+   `/health` → 200 in ~11s, unauthenticated `GET /api/projects` → 401 (matching the CD smoke gate).
+
+ai-generator verified too: `GET /` → 200, `POST /generate` → 401 without/wrong `X-Service-Token`,
+200 with the correct token. All three images build from the committed files and the fixed image
+(`elmahrosa-api-core:ci3` build cache) boots clean. Docker test containers cleaned up.
+
+**Updated final state:** `master @ b0c6ae5` (commits `dd68f83`, `9631c34`, `8a8216d`, `d7a29e1`,
+`b0c6ae5`), successful CI run `34945809247`, all 10 jobs ✓ + dependabot skipped.
 
 ## Discovery / motivation
 
