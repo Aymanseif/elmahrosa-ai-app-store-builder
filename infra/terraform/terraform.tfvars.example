@@ -1,0 +1,41 @@
+# Copy to terraform.tfvars (KEEP OUT OF GIT), fill in the real values, then:
+#   terraform init
+#   terraform apply -var-file=terraform.tfvars
+# First run: create the elmahrosa-terraform-state S3 bucket (with versioning,
+# not version-controlled anywhere) BEFORE running terraform apply — the S3
+# backend in main.tf loads state from it.
+
+project_name = "elmahrosa"
+environment  = "prod"
+aws_region   = "us-east-1"
+
+# --- Required for api-core to boot (REQUIRED_ENV in src/index.js) ---
+clerk_issuer_url = "https://<yourapp>.clerk.accounts.dev"
+db_password      = "<strong-random-db-password>"
+
+# --- Application secrets ---
+clerk_audience       = ""
+allowed_origin       = "https://<public-web-app-domain>"
+stripe_secret_key    = "sk_live_..."
+stripe_webhook_secret = "whsec_..."
+anthropic_api_key    = "sk-ant-..."
+anthropic_model      = ""
+service_token        = "<shared-token-between-api-core-and-ai-generator>"
+
+# --- Deploy ---
+image_tag = "latest"
+
+# --- HTTPS (choose one combination) ---
+# Option A: pass a pre-existing validated ACM certificate ARN (recommended)
+certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxx"
+domain_name     = ""
+hosted_zone_id  = ""
+
+# Option B: request + DNS-validate a cert for domain_name (requires the domain
+# to live in a Route53 hosted zone you own)
+# certificate_arn = ""
+# domain_name     = "app.example.com"
+# hosted_zone_id  = "ZXXXXXXXXXXXXX"
+
+# RDS: keep true only for throwaway dev; false preserves a final snapshot on destroy
+db_skip_final_snapshot = false

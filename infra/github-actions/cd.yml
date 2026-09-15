@@ -35,6 +35,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: elmahrosa
           IMAGE_TAG: ${{ github.sha }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
         run: |
           set -euo pipefail
           declare -A SERVICE_DOCKERFILES=(
@@ -48,7 +51,21 @@ jobs:
               echo "::warning::Skipping $service — no Dockerfile at $dockerfile"
               continue
             fi
-            docker build -f "$dockerfile" -t "$ECR_REGISTRY/$ECR_REPOSITORY/$service:$IMAGE_TAG" .
+            if [ "$service" = "web-app" ]; then
+              # NEXT_PUBLIC_* values are inlined by Next.js at build time, so
+              # the shipped browser bundle must be built with the real values.
+              echo "::group::web-app NEXT_PUBLIC build args"
+              grep -qx '' <<< "$NEXT_PUBLIC_API_URL" || echo "  API_URL set: $NEXT_PUBLIC_API_URL"
+              grep -qx '' <<< "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" || echo "  CLERK key set: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:0:0}…"
+              echo "::endgroup::"
+              docker build -f "$dockerfile" \
+                --build-arg NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
+                --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" \
+                --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" \
+                -t "$ECR_REGISTRY/$ECR_REPOSITORY/$service:$IMAGE_TAG" .
+            else
+              docker build -f "$dockerfile" -t "$ECR_REGISTRY/$ECR_REPOSITORY/$service:$IMAGE_TAG" .
+            fi
             docker push "$ECR_REGISTRY/$ECR_REPOSITORY/$service:$IMAGE_TAG"
           done
 

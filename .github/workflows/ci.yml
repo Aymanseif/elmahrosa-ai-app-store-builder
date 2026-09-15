@@ -108,9 +108,13 @@ jobs:
       # All service Dockerfiles build from the repo root so pnpm can install
       # from the committed pnpm-lock.yaml (--frozen-lockfile). This matches the
       # exact contexts cd.yml uses, so a Dockerfile that breaks cannot be
-      # merged silently and only fail on the deploy job.
+      # merged silently and only fail on the deploy job. Placeholder
+      # NEXT_PUBLIC_* values prove the web-app ARG/ENV wiring works (the real
+      # values never exist in CI); cd.yml passes the live ones.
       - name: Build ${{ matrix.service }} image
-        run: docker build -f "${{ matrix.dockerfile }}" -t elmahrosa-${{ matrix.service }}:ci .
+        env:
+          BUILD_ARGS: ${{ matrix.service == 'web-app' && '--build-arg NEXT_PUBLIC_API_URL=https://example.invalid --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_ci_placeholder --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_ci_placeholder' || '' }}
+        run: docker build ${{ env.BUILD_ARGS }} -f "${{ matrix.dockerfile }}" -t elmahrosa-${{ matrix.service }}:ci .
 
   security:
     runs-on: ubuntu-latest

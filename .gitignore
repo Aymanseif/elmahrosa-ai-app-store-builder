@@ -97,6 +97,9 @@ docker-compose.override.yml
 **/*.tfstate
 **/*.tfstate.backup
 **/.terraform/**/*.tfplan
+**/*.tfvars
+**/*.tfvars.json
+!**/terraform.tfvars.example
 
 # Misc
 .DS_Store

@@ -44,13 +44,14 @@ services:
       - "3001:3000"
     environment:
       - DATABASE_URL=postgresql://elmahrosa:${POSTGRES_PASSWORD}@postgres:5432/elmahrosa
-      - REDIS_URL=redis://redis:6379
       - PORT=3000
       - CLERK_ISSUER_URL=${CLERK_ISSUER_URL}
+      - CLERK_AUDIENCE=${CLERK_AUDIENCE}
+      - ALLOWED_ORIGIN=${ALLOWED_ORIGIN}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     # Milestone 1.5: /health wired as the compose healthcheck.
     healthcheck:

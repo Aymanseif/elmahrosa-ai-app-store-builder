@@ -177,8 +177,11 @@ resource "aws_ecs_task_definition" "api_core" {
           # SSM SecureString with the container `secrets` block for production.
           value = "postgresql://${aws_db_instance.main.username}:${var.db_password}@${aws_db_instance.main.endpoint}/${aws_db_instance.main.db_name}"
         },
-        { name = "REDIS_URL", value = "redis://${aws_elasticache_replication_group.main.primary_endpoint_address}:6379" },
-        { name = "JWT_SECRET", value = var.jwt_secret },
+        { name = "CLERK_ISSUER_URL", value = var.clerk_issuer_url },
+        { name = "CLERK_AUDIENCE", value = var.clerk_audience },
+        { name = "ALLOWED_ORIGIN", value = var.allowed_origin },
+        { name = "STRIPE_SECRET_KEY", value = var.stripe_secret_key },
+        { name = "STRIPE_WEBHOOK_SECRET", value = var.stripe_webhook_secret },
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -219,6 +222,8 @@ resource "aws_ecs_task_definition" "ai_generator" {
       environment = [
         { name = "PORT", value = "8000" },
         { name = "ANTHROPIC_API_KEY", value = var.anthropic_api_key },
+        { name = "ANTHROPIC_MODEL", value = var.anthropic_model },
+        { name = "SERVICE_TOKEN", value = var.service_token },
       ]
       logConfiguration = {
         logDriver = "awslogs"
