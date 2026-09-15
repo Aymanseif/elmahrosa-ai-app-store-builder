@@ -1,13 +1,41 @@
 # Phase 3 — Launch Readiness: CI/CD Pipeline, Docker Reproducibility, Terraform
 
 **Order:** Final remediation order, 2026-09-13 (Elmahrosa AI App Store Builder)
-**Verified commits:** `master @ 1505790` (fixes `3a571eb`, `5425e16`, `8779146`, `1505790`)
-**Baseline:** Phase 2 exit gate met (`bfdd733`, report `2026-09-14-phase-2-...` in `audits/`)
-**Verification date:** 2026-09-14
+**Verified commits:** `master @ 9631c34` (fixes `3a571eb`, `5425e16`, `8779146`, `1505790`, `dd68f83`, `9631c34`)
+**Verification date:** 2026-09-15
 **Machine:** Windows 11 (win32), git-bash, node v26.7.0
 **Tool versions:** pnpm v9.15.9, Terraform v1.9.8 (hashicorp/aws ~> 5.0), Python 3.12.10
 
 ---
+
+## Step 0 follow-up (2026-09-15) — env/config alignment for first deploy
+
+Auditing the exact code paths the task definitions feed surfaced two real launch blockers:
+
+1. **web-app shipped with no runtime config.** `lib/api.js` defaults
+   `NEXT_PUBLIC_API_URL` to `http://localhost:3000` — inlined into the browser bundle **at build
+   time** by Next.js. CI/CD builds passed no `NEXT_PUBLIC_*` args, so every user's browser would
+   have called their own `localhost`. Fixed: `apps/web-app/Dockerfile` accepts
+   `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+   build args; CI passes a harmless `https://example.invalid` to exercise the plumbing; `cd.yml`
+   forwards the real secrets. (Note: any non-empty Clerk publishable key is format-validated by
+   Clerk at prerender time — a fake CI key broke the Docker build, so CI deliberately leaves the
+   Clerk/Stripe args unset and CD passes real ones.)
+2. **api-core task env mismatched actual usage.** The task def injected `REDIS_URL`/`JWT_SECRET`
+   (unused by any code) but not the vars `src/index.js` actually requires
+   (`CLERK_ISSUER_URL`, `DATABASE_URL`) or reads (`CLERK_AUDIENCE`, `ALLOWED_ORIGIN`,
+   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`). The boot-blocking `CLERK_ISSUER_URL` omission
+   would have crashed the container on deploy. Fixed in `ecs.tf`; ai-generator task additionally
+   gained `ANTHROPIC_MODEL` + `SERVICE_TOKEN` (validated by `main.py:175`).
+   Redis/ElastiCache remain provisioned but unconsumed — flagged, not removed, mid-launch.
+3. **`.env.example` drift.** `NEXT_PUBLIC_API_URL` had a stale `/api` suffix that would double to
+   `/api/api/...` (paths already begin with `/api/`); unused `REDIS_URL`/`JWT_SECRET` listed.
+   Rewritten to match real usage; RDS `skip_final_snapshot` moved behind
+   `db_skip_final_snapshot` var (false for prod); `terraform.tfvars.example` added; `*.tfvars`
+   gitignored so real secrets can't be committed.
+
+**Final state:** `master @ 9631c34`, run `34936753136` — all 10 jobs ✓ (incl. docker-build web-app
+with the ARG path) + dependabot skipped; `terraform validate` still "Success!".
 
 ## Discovery / motivation
 
@@ -83,5 +111,9 @@ $ pnpm/action-setup version:9 vs packageManager field → ERR_PNPM_BAD_PM_VERSIO
 
 - Bootstrap the S3 state bucket and run `terraform apply` (with `certificate_arn` or `domain_name`
   chosen), then trigger the CD workflow and confirm the ecs-wait + smoke gates.
-- Set `Clerk publishable key`/secret and `ANTHROPIC_API_KEY`/`DATABASE_URL` secrets in the CD
-  workflow's environment or AWS Secrets Manager as expected by the task definitions.
+- Set the CD secrets the task definitions now require: `NEXT_PUBLIC_API_URL`,
+  `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (web-app build args),
+  `CLERK_ISSUER_URL` (api-core boot-required), plus `CLERK_AUDIENCE`, `ALLOWED_ORIGIN`,
+  `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `DATABASE_URL`, `ANTHROPIC_API_KEY`,
+  `SERVICE_TOKEN` — in the CD environment or AWS Secrets Manager per the task definitions.
+- Keep `db_skip_final_snapshot = false` in prod tfvars so RDS destroy preserves a final snapshot.
