@@ -25,7 +25,7 @@ fi
 [ -n "${AWS_SECRET_ACCESS_KEY:-}" ] || { echo "error: AWS_SECRET_ACCESS_KEY not set" >&2; exit 1; }
 
 echo "==> ensuring state bucket $BUCKET"
-if aws s3api head-bucket --bucket "$BUCKET" --region "$REGION" --no-sign-request >/dev/null 2>&1; then
+if aws s3api head-bucket --bucket "$BUCKET" --region "$REGION" >/dev/null 2>&1; then
   echo "    bucket exists, skipping"
 else
   aws s3api create-bucket --bucket "$BUCKET" --region "$REGION" >/dev/null
@@ -43,7 +43,9 @@ aws s3api put-public-access-block --bucket "$BUCKET" \
 echo "    bucket: versioning+encryption+public-access-block applied"
 
 echo "==> terraform init"
-terraform init -upgrade -backend-config="bucket=$BUCKET" \
+# Respect the committed .terraform.lock.hcl (drop -upgrade so the pinned
+# provider isn't floated).
+terraform init -backend-config="bucket=$BUCKET" \
   -backend-config="key=$KEY" -backend-config="region=$REGION"
 
 echo "==> terraform plan"
@@ -55,6 +57,8 @@ if [ -n "$PLAN_ONLY" ]; then
 fi
 
 echo "==> terraform apply"
-terraform apply "$@" "terraform.tfplan"
+# A saved plan has the variables baked in; passing -var-file again here is
+# rejected by Terraform, so apply takes only the plan.
+terraform apply "terraform.tfplan"
 echo "==> done — outputs:"
 terraform output

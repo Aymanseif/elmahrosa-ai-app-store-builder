@@ -134,7 +134,10 @@ jobs:
             local url="$1"
             local expect="$2"
             for i in $(seq 1 30); do
-              code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$url" || true)"
+              # -L follows the HTTP→HTTPS 301 the ALB issues when a cert is
+              # attached, so the same probe passes both before and after HTTPS
+              # is enabled (without a cert there is no redirect, still 200).
+              code="$(curl -sS -L -o /dev/null -w '%{http_code}' --max-time 10 "$url" || true)"
               if [ "$code" = "$expect" ]; then
                 echo "OK  $url -> $code"
                 return 0

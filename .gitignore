@@ -97,6 +97,7 @@ docker-compose.override.yml
 **/*.tfstate
 **/*.tfstate.backup
 **/.terraform/**/*.tfplan
+**/*.tfplan
 **/*.tfvars
 **/*.tfvars.json
 !**/terraform.tfvars.example
