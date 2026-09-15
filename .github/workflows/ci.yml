@@ -118,6 +118,31 @@ jobs:
           BUILD_ARGS: ${{ matrix.service == 'web-app' && '--build-arg NEXT_PUBLIC_API_URL=https://example.invalid' || '' }}
         run: docker build ${{ env.BUILD_ARGS }} -f "${{ matrix.dockerfile }}" -t elmahrosa-${{ matrix.service }}:ci .
 
+  # Terraform is the single source of truth for the deployed infra, so a
+  # broken .tf file must never merge. fmt + init(-backend=false, skips the S3
+  # backend so no AWS creds are needed) + validate runs as its own gate.
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.9.8'
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+
+      - name: Init without S3 backend
+        run: terraform init -backend=false -input=false
+
+      - name: Validate configuration
+        run: terraform validate -no-color
+
   security:
     runs-on: ubuntu-latest
     steps:
